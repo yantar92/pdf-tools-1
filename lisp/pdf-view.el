@@ -891,7 +891,9 @@ or if png is not available) or `png'.
 Signal an error, if neither `imagemagick' nor `png' is available.
 
 See also `pdf-view-use-imagemagick'."
-  (cond ((and pdf-view-use-imagemagick
+  (cond ((eq pdf-tools-server 'vimura)
+         'svg)
+        ((and pdf-view-use-imagemagick
               (fboundp 'imagemagick-types))
          'imagemagick)
         ((image-type-available-p 'image-io)

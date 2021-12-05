@@ -32,7 +32,9 @@
 ;; * Customiazations
 ;; * ================================================================== *
 
-(defcustom pdf-cache-image-limit 64
+(defcustom pdf-cache-image-limit (if (eq (pdf-view-image-type) 'svg)
+                                     16
+                                   64)
   "Maximum number of cached PNG images per buffer."
   :type 'integer
   :group 'pdf-cache

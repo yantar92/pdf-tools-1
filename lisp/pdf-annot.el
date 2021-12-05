@@ -1347,7 +1347,9 @@ by a header."
             (unless (file-directory-p temporary-file-directory)
               (make-directory temporary-file-directory))
             (unless data
-              (setq tempfile (make-temp-file "pdf-annot" nil ".png"))
+              (setq tempfile (make-temp-file "pdf-annot" nil (if (eq (pdf-view-image-type) 'svg)
+                                                                 ".svg"
+                                                               ".png")))
               ;; FIXME: Why is this with-temp-buffer needed (which it is) ?
               (with-temp-buffer
                 (org-create-formula-image
@@ -1355,7 +1357,9 @@ by a header."
               (setq data (pdf-util-munch-file tempfile))
               (if (and (> (length data) 3)
                        (equal (substring data 1 4)
-                              "PNG"))
+                              (if (eq (pdf-view-image-type) 'svg)
+                                  "SVG"
+                                "PNG")))
                   (pdf-cache-put-image page 0 data hash)
                 (setq data nil)))
             (concat
