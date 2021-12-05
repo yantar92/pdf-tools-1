@@ -68,6 +68,8 @@ See also `pdf-view-use-imagemagick'."
         (t
          (error "PNG image supported not compiled into Emacs"))))
 
+(when (eq pdf-tools-server 'vimura)
+  (require 'pdf-vimura-client))
 (require 'pdf-cache)
 (require 'jka-compr)
 (require 'bookmark)
@@ -270,9 +272,12 @@ regarding display of the region in the later function.")
 
 (defun pdf-tools-toggle-server ()
   (interactive)
-  (setq pdf-tools-server (print (if (eq pdf-tools-server 'epdfinfo)
-                                    'vimura
-                                  'epdfinfo))))
+  (let ((new-value (if (eq pdf-tools-server 'epdfinfo)
+                       'vimura
+                     'epdfinfo)))
+    (when (eq new-value 'vimura)
+      (require 'pdf-vimura-client))
+    (setq pdf-tools-server (print new-value))))
 
 ;; * ================================================================== *
 ;; * Major Mode

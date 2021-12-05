@@ -352,8 +352,10 @@ error."
 ;; * Sending and receiving
 ;; * ================================================================== *
 
-(defun pdf-info-query (cmd &rest args)
+(defun pdf-info-query-epdfinfo (cmd &rest args)
   "Query the server using CMD and ARGS."
+  (print cmd)
+  (print args)
   (pdf-info-process-assert-running)
   (unless (symbolp cmd)
     (setq cmd (intern cmd)))
@@ -393,6 +395,47 @@ error."
         (error "epdfinfo: Command was interrupted"))
        (t
         (error "internal error: invalid response status"))))))
+
+(defun pdf-info-query-vimura (cmd &rest args)
+  ;; (print cmd)
+  ;; (print args)
+  (let* ((py-func (pcase cmd
+                    ('number-of-pages 'number_of_pages)
+                    (_ cmd)))
+         (response (epc:call-sync my-epc
+                                  py-func
+                                  (pcase cmd
+                                    ('open (list (car args)))
+                                    ('number-of-pages nil)
+                                    ('pagesize (list (1- (cadr args))))
+                                    ('renderpage (if-let (key-args (nthcdr 3 args))
+                                                     (let* ((fg (plist-get key-args :foreground))
+                                                            (bg (plist-get key-args :background))
+                                                            (hl-text (plist-get key-args :highlight-text))
+                                                            (edges (mapcar #'string-to-number
+                                                                           (split-string hl-text))))
+                                                       ;; (print (append (list (1- (cadr args)) (caddr args))
+                                                       ;;                (list fg bg edges)))
+                                                       (append (list (1- (cadr args)) (caddr args))
+                                                                     (list fg bg edges)))
+                                                   (list (1- (cadr args)) (caddr args))))
+                                    ('getselection (list (1- (cadr args))))
+                                    ('addannot (print (list (1- (cadr args))
+                                                      (symbol-name (caddr args))
+                                                      (print (pdf-vimura-format-edges (cadddr args))))))
+                                    ('save (print args))))))
+    ;; as vimura is not pdf-tools, some responses require to be 'post-processed'
+    ;; (print response)
+    response
+    (pcase cmd
+      ('pagesize (cons (car response) (cadr response)))
+      ;; ('renderpage (base64-decode-string response))
+      (_ response))))
+
+(defun pdf-info-query (cmd &rest args)
+  (if (eq pdf-tools-server 'epdfinfo)
+      (apply 'pdf-info-query-epdfinfo cmd args)
+    (apply 'pdf-info-query-vimura cmd args)))
 
 (defun pdf-info-interrupt ()
   "FIXME: This command does currently nothing."
