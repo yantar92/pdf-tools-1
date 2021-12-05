@@ -44,6 +44,23 @@
   "View PDF documents."
   :group 'pdf-tools)
 
+(defcustom pdf-tools-server 'epdfinfo
+  "Backend for accessing pdf files.
+
+The ‘epdfinfo' server is the original and fastest server, written
+in C, implementing, a reasonable set but limited set of options
+provides by the freedesktop.org its Poppler PDF library.
+
+The ‘vimura' server is newer and is slightly slower, mainly
+because it uses EPC for communication. However, because it is
+written in python and using the excellent, fast and very
+elaborate pymupdf library, it is much more hackable than the
+‘epdfinfo' server. Ultimately, this backend should provide many
+additional features that are not provided by the ‘epdfinfo' server. "
+  :group 'pdf-tools
+  :type 'symbol
+  :options '(epdfinfo vimura))
+
 (defcustom pdf-view-display-size 'fit-width
   "The desired size of displayed pages.
 
@@ -237,6 +254,16 @@ regarding display of the region in the later function.")
   "Whether `image-mode' scrolls vertically by pixels.")
 
 
+;; * ================================================================== *
+;; * Backend
+;; * ================================================================== *
+
+(defun pdf-tools-toggle-server ()
+  (interactive)
+  (setq pdf-tools-server (print (if (eq pdf-tools-server 'epdfinfo)
+                                    'vimura
+                                  'epdfinfo))))
+
 ;; * ================================================================== *
 ;; * Major Mode
 ;; * ================================================================== *
