@@ -28,17 +28,6 @@
 (require 'pdf-macs)
 (require 'pdf-util)
 (require 'pdf-info)
-(require 'pdf-cache)
-(require 'jka-compr)
-(require 'bookmark)
-(require 'password-cache)
-
-(declare-function cua-copy-region "cua-base")
-
-
-;; * ================================================================== *
-;; * Customizations
-;; * ================================================================== *
 
 (defgroup pdf-view nil
   "View PDF documents."
@@ -60,6 +49,41 @@ additional features that are not provided by the ‘epdfinfo' server. "
   :group 'pdf-tools
   :type 'symbol
   :options '(epdfinfo vimura))
+
+(defun pdf-view-image-type ()
+  "Return the image type that should be used.
+
+The return value is either `imagemagick' (if available and wanted
+or if png is not available) or `png'.
+
+Signal an error, if neither `imagemagick' nor `png' is available.
+
+See also `pdf-view-use-imagemagick'."
+  (cond ((eq pdf-tools-server 'vimura)
+         'svg)
+        ((and pdf-view-use-imagemagick
+              (fboundp 'imagemagick-types))
+         'imagemagick)
+        ((image-type-available-p 'image-io)
+         'image-io)
+        ((image-type-available-p 'png)
+         'png)
+        ((fboundp 'imagemagick-types)
+         'imagemagick)
+        (t
+         (error "PNG image supported not compiled into Emacs"))))
+
+(require 'pdf-cache)
+(require 'jka-compr)
+(require 'bookmark)
+(require 'password-cache)
+
+(declare-function cua-copy-region "cua-base")
+
+
+;; * ================================================================== *
+;; * Customizations
+;; * ================================================================== *
 
 (defcustom pdf-view-display-size 'fit-width
   "The desired size of displayed pages.
@@ -909,28 +933,6 @@ See also `pdf-view-set-slice-from-bounding-box'."
 (defvar pdf-view-inhibit-redisplay nil)
 (defvar pdf-view-inhibit-hotspots nil)
 
-(defun pdf-view-image-type ()
-  "Return the image type that should be used.
-
-The return value is either `imagemagick' (if available and wanted
-or if png is not available) or `png'.
-
-Signal an error, if neither `imagemagick' nor `png' is available.
-
-See also `pdf-view-use-imagemagick'."
-  (cond ((eq pdf-tools-server 'vimura)
-         'svg)
-        ((and pdf-view-use-imagemagick
-              (fboundp 'imagemagick-types))
-         'imagemagick)
-        ((image-type-available-p 'image-io)
-         'image-io)
-        ((image-type-available-p 'png)
-         'png)
-        ((fboundp 'imagemagick-types)
-         'imagemagick)
-        (t
-         (error "PNG image supported not compiled into Emacs"))))
 
 (defmacro pdf-view-create-image (data &rest props)
   ;; TODO: add DATA and PROPS to docstring.
