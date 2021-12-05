@@ -61,15 +61,10 @@ Signal an error, if neither `imagemagick' nor `png' is available.
 See also `pdf-view-use-imagemagick'."
   (cond ((eq pdf-tools-server 'vimura)
          'svg)
-        ((and pdf-view-use-imagemagick
-              (fboundp 'imagemagick-types))
-         'imagemagick)
         ((image-type-available-p 'image-io)
          'image-io)
         ((image-type-available-p 'png)
          'png)
-        ((fboundp 'imagemagick-types)
-         'imagemagick)
         (t
          (error "PNG image supported not compiled into Emacs"))))
 
@@ -117,15 +112,6 @@ of the page moves to the previous page."
   "Fractional margin used for slicing with the bounding-box."
   :group 'pdf-view
   :type 'number)
-
-(defcustom pdf-view-use-imagemagick nil
-  "Whether imagemagick should be used for rendering.
-
-This variable has no effect, if imagemagick was not compiled into
-Emacs or if imagemagick is the only way to display PNG images.
-FIXME: Explain dis-/advantages of imagemagick and png."
-  :group 'pdf-view
-  :type 'boolean)
 
 (defcustom pdf-view-use-scaling nil
   "Whether images should be allowed to be scaled for rendering.
