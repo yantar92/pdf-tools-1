@@ -421,8 +421,8 @@ error."
                                                    (list (1- (cadr args)) (caddr args))))
                                     ('getselection (list (1- (cadr args))))
                                     ('addannot (print (list (1- (cadr args))
-                                                      (symbol-name (caddr args))
-                                                      (print (pdf-vimura-format-edges (cadddr args))))))
+                                                      (symbol-name (nth 2 args))
+                                                      (print (pdf-vimura-format-edges (nth 4 args))))))
                                     ('save (print args))))))
     ;; as vimura is not pdf-tools, some responses require to be 'post-processed'
     ;; (print response)

@@ -1404,9 +1404,10 @@ Stores the region in `pdf-view-active-region'."
                                        (car end) (cdr end)))))
                   (setq region
                         (pdf-util-scale-pixel-to-relative iregion))
-                  (pdf-view-display-region
-                   (cons region pdf-view-active-region)
-                   rectangle-p)
+                  (when (eq pdf-tools-server 'epdfinfo)
+                    (pdf-view-display-region
+                    (cons region pdf-view-active-region)
+                    rectangle-p))
                   (pdf-util-scroll-to-edges iregion)))))
       (setq pdf-view-active-region
             (append pdf-view-active-region
