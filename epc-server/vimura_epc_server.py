@@ -61,14 +61,14 @@ def renderpage(page, width, *args):
     #         p.draw_rect(edges, 0.5, 0.5, fill_opacity=0.5)
     #     except ValueError:
     #         print("Negelect this error")
-    # zoom = width/p.mediabox_size[0]
-    # mat = fitz.Matrix(zoom, zoom)
+    zoom = width/p.mediabox_size[0]
+    mat = fitz.Matrix(zoom, zoom)
     # pix = p.get_pixmap(matrix=mat)
     # p.clean_contents()
     # mag = display_width / pix.width
     # svg = page.get_svg_image(matrix=fitz.Matrix(mag, mag))
     # return pix.tobytes("ppm")
-    return p.get_svg_image(fitz.Identity)
+    return p.get_svg_image(mat)  # returns size in pt
     # return base64.b64encode(pix.tobytes("png")).decode()
     # return pix.tobytes("png")
 

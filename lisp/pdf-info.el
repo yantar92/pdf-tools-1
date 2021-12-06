@@ -426,11 +426,11 @@ error."
                                     ('save (print args))))))
     ;; as vimura is not pdf-tools, some responses require to be 'post-processed'
     ;; (print response)
-    response
     (pcase cmd
       ('pagesize (cons (car response) (cadr response)))
       ;; ('renderpage (base64-decode-string response))
-      (_ response))))
+      (_ response)))) ; `renderpage' returns pt size instead of px size, but is approx. okay
+
 
 (defun pdf-info-query (cmd &rest args)
   (if (eq pdf-tools-server 'epdfinfo)
