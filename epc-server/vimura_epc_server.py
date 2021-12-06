@@ -84,8 +84,9 @@ def renderpage(page, width, *args):
 #   (popup-edges) (popup-is-open) (created)
 #   (markup-edges (0.199907 0.131846 0.32086 0.180546))))
 @server.register_function
-def getannots():
-    return False
+def getannots(page):
+    annots = p.annots()
+    return [a.info for a in annots]
 
 # TODO create pagelinks function producing following response
 # (((edges 0.141183 0.14789 0.673246 0.16353) (type . goto-dest) (title . "")

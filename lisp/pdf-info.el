@@ -425,9 +425,14 @@ error."
                                                       (print (pdf-vimura-format-edges (nth 4 args))))))
                                     ('save (print args))))))
     ;; as vimura is not pdf-tools, some responses require to be 'post-processed'
-    ;; (print response)
+    (when (eq cmd 'getannots) (print response))
     (pcase cmd
       ('pagesize (cons (car response) (cadr response)))
+      ('getannots (print (mapcar (lambda (x)
+                             (list (cons 'page (nth 1 args))
+                                   (cons 'edges (car x))
+                                   (cons 'type (intern (downcase (cadr (nth 1 x)))))))
+                           response)))
       ;; ('renderpage (base64-decode-string response))
       (_ response)))) ; `renderpage' returns pt size instead of px size, but is approx. okay
 
