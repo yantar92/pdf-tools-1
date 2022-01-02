@@ -128,7 +128,7 @@ keymap is `isearch-mode-map'.")
 (put 'image-scroll-down 'isearch-scroll t)
 
 (define-minor-mode pdf-isearch-active-mode
-  ""
+  "This mode is enabled when isearch is active in a PDF file."
   :group 'pdf-isearch
   (cond
    (pdf-isearch-active-mode
@@ -748,9 +748,11 @@ MATCH-BG LAZY-FG LAZY-BG\)."
        page width t nil
        `(,fg1 ,bg1 ,@(pdf-util-scale-pixel-to-relative
                       current))
-       `(,fg2 ,bg2 ,@(pdf-util-scale-pixel-to-relative
-                      (apply 'append
-                        (remove current matches))))))))
+       ;; (when (string= (file-name-nondirectory pdf-info-epdfinfo-program) "epdfinfo") 
+       ;; `(,fg2 ,bg2 ,@(pdf-util-scale-pixel-to-relative
+       ;;                (apply 'append
+       ;;                       (remove current matches))))))
+       ))))
 
 
 ;; * ================================================================== *

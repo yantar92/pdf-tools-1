@@ -76,7 +76,7 @@ See also `pdf-view-use-imagemagick'."
 (require 'password-cache)
 
 (declare-function cua-copy-region "cua-base")
-
+(declare-function pdf-tools-pdf-buffer-p "pdf-tools")
 
 ;; * ================================================================== *
 ;; * Customizations
@@ -326,11 +326,11 @@ regarding display of the region in the later function.")
     ;; Reconvert
     (define-key map (kbd "C-c C-c")   'doc-view-mode)
     (define-key map (kbd "g")         'revert-buffer)
-    (define-key map (kbd "r")         'revert-buffer)
     ;; Region
     (define-key map [down-mouse-1] 'pdf-view-mouse-set-region)
     (define-key map [M-down-mouse-1] 'pdf-view-mouse-set-region-rectangle)
     (define-key map [C-down-mouse-1] 'pdf-view-mouse-extend-region)
+    (define-key map [C-M-down-mouse-1] 'pdf-view-mouse-set-region-line)
     (define-key map [remap kill-region] 'pdf-view-kill-ring-save)
     (define-key map [remap kill-ring-save] 'pdf-view-kill-ring-save)
     (define-key map [remap mark-whole-buffer] 'pdf-view-mark-whole-page)
@@ -443,16 +443,15 @@ PNG images in Emacs buffers."
 		  (current-buffer)))
 
 (unless (version< emacs-version "24.4")
+  (advice-add 'cua-copy-region
+	          :before-until
+	          #'cua-copy-region--pdf-view-advice)
   (defun cua-copy-region--pdf-view-advice (&rest _)
     "If the current buffer is in `pdf-view' mode, call
 `pdf-view-kill-ring-save'."
     (when (eq major-mode 'pdf-view-mode)
       (pdf-view-kill-ring-save)
-      t))
-
-  (advice-add 'cua-copy-region
-	      :before-until
-	      #'cua-copy-region--pdf-view-advice))
+      t)))
 
 (defun pdf-view-check-incompatible-modes (&optional buffer)
   "Check BUFFER for incompatible modes, maybe issue a warning."
@@ -622,6 +621,9 @@ For example, (pdf-view-shrink 1.25) decreases size by 20%."
 ;; * ================================================================== *
 ;; * Moving by pages and scrolling
 ;; * ================================================================== *
+
+(defvar pdf-view-inhibit-redisplay nil)
+(defvar pdf-view-inhibit-hotspots nil)
 
 (defun pdf-view-goto-page (page &optional window)
   "Go to PAGE in PDF.
@@ -826,9 +828,9 @@ displayed page number."
 ;; * ================================================================== *
 
 (defun pdf-view-set-slice (x y width height &optional window)
-  ;; TODO: add WINDOW to docstring.
-  "Set the slice of the pages that should be displayed.
+  "Set the slice of the pages that should be displayed in WINDOW.
 
+WINDOW defaults to `selected-window' if not provided.
 X, Y, WIDTH and HEIGHT should be relative coordinates, i.e. in
 \[0;1\].  To reset the slice use `pdf-view-reset-slice'."
   (unless (equal (pdf-view-current-slice window)
@@ -865,8 +867,9 @@ dragging it to its bottom-right corner.  See also
                   (/ 1.0 (float (cdr size))))))))
 
 (defun pdf-view-set-slice-from-bounding-box (&optional window)
-  ;; TODO: add WINDOW to docstring.
   "Set the slice from the page's bounding-box.
+
+WINDOW defaults to `selected-window' if not provided.
 
 The result is that the margins are almost completely cropped,
 much more accurate than could be done manually using
@@ -888,8 +891,9 @@ See also `pdf-view-bounding-box-margin'."
            (append slice (and window (list window))))))
 
 (defun pdf-view-reset-slice (&optional window)
-  ;; TODO: add WINDOW to doctring.
-  "Reset the current slice.
+  "Reset the current slice and redisplay WINDOW.
+
+WINDOW defaults to `selected-window' if not provided.
 
 After calling this function the whole page will be visible
 again."
@@ -913,17 +917,35 @@ See also `pdf-view-set-slice-from-bounding-box'."
     (add-hook 'pdf-view-change-page-hook
               'pdf-view-set-slice-from-bounding-box nil t))
    (t
-    (remove-hook 'pdf-view-change-page-hook
-                 'pdf-view-set-slice-from-bounding-box t))))
+    (progn (remove-hook 'pdf-view-change-page-hook
+                        'pdf-view-set-slice-from-bounding-box t)
+           (pdf-view-reset-slice)))))
 
 
 ;; * ================================================================== *
 ;; * Display
 ;; * ================================================================== *
 
-(defvar pdf-view-inhibit-redisplay nil)
-(defvar pdf-view-inhibit-hotspots nil)
+(defun pdf-view-image-type ()
+  "Return the image type that should be used.
 
+The return value is either `imagemagick' (if available and wanted
+or if png is not available) or `png'.
+
+Signal an error, if neither `imagemagick' nor `png' is available.
+
+See also `pdf-view-use-imagemagick'."
+  (cond ((and pdf-view-use-imagemagick
+              (fboundp 'imagemagick-types))
+         'imagemagick)
+        ((image-type-available-p 'image-io)
+         'image-io)
+        ((image-type-available-p 'png)
+         'png)
+        ((fboundp 'imagemagick-types)
+         'imagemagick)
+        (t
+         (error "PNG image supported not compiled into Emacs"))))
 
 (defmacro pdf-view-create-image (data &rest props)
   ;; TODO: add DATA and PROPS to docstring.
@@ -1326,7 +1348,7 @@ Deactivate the region if DEACTIVATE-P is non-nil."
     (pdf-view-redisplay t)))
 
 (defun pdf-view-mouse-set-region (event &optional allow-extend-p
-                                        rectangle-p)
+                                        rectangle-p line-p)
   "Select a region of text using the mouse with mouse event EVENT.
 
 Allow for stacking of regions, if ALLOW-EXTEND-P is non-nil.
@@ -1395,7 +1417,7 @@ Stores the region in `pdf-view-active-region'."
                                                 (+ (car begin) (car dxy))))
                                     (max 0 (min (cdr size)
                                                 (+ (cdr begin) (cdr dxy)))))))))
-                (let ((iregion (if rectangle-p
+                (let ((iregion (if (and rectangle-p (not line-p))
                                    (list (min (car begin) (car end))
                                          (min (cdr begin) (cdr end))
                                          (max (car begin) (car end))
@@ -1404,15 +1426,16 @@ Stores the region in `pdf-view-active-region'."
                                        (car end) (cdr end)))))
                   (setq region
                         (pdf-util-scale-pixel-to-relative iregion))
-                  (when (eq pdf-tools-server 'epdfinfo)
-                    (pdf-view-display-region
-                    (cons region pdf-view-active-region)
-                    rectangle-p))
+                  (pdf-view-display-region
+                   (cons region pdf-view-active-region)
+                   rectangle-p line-p)
                   (pdf-util-scroll-to-edges iregion)))))
-      (setq pdf-view-active-region
-            (append pdf-view-active-region
-                    (list region)))
-      (pdf-view--push-mark))))
+      (if (eq this-command 'pdf-view-mouse-set-region-line)
+          (pdf-annot-add-line-markup-annotation region)
+        (setq pdf-view-active-region
+              (append pdf-view-active-region
+                      (list region)))
+        (pdf-view--push-mark)))))
 
 (defun pdf-view-mouse-extend-region (event)
   "Extend the currently active region with mouse event EVENT."
@@ -1430,7 +1453,17 @@ This is more useful for commands like
   (interactive "@e")
   (pdf-view-mouse-set-region event nil t))
 
-(defun pdf-view-display-region (&optional region rectangle-p)
+(defun pdf-view-mouse-set-region-line (event)
+  "Like `pdf-view-mouse-set-region' but displays as a rectangle.
+
+EVENT is the mouse event.
+
+This is more useful for commands like
+`pdf-view-extract-region-image'."
+  (interactive "@e")
+  (pdf-view-mouse-set-region event nil t t))
+
+(defun pdf-view-display-region (&optional region rectangle-p line-p)
   ;; TODO: write documentation!
   (unless region
     (pdf-view-assert-active-region)
@@ -1443,9 +1476,13 @@ This is more useful for commands like
     (pdf-view-display-image
      (pdf-view-create-image
          (if rectangle-p
-             (pdf-info-renderpage-highlight
-              page width nil
-              `(,(car colors) ,(cdr colors) 0.35 ,@region))
+             (if line-p
+                 (pdf-info-renderpage-line
+                  page width nil
+                  `(,(car colors) ,(cdr colors) 0.35 ,@region))
+               (pdf-info-renderpage-highlight
+                page width nil
+                `(,(car colors) ,(cdr colors) 0.35 ,@region)))
            (pdf-info-renderpage-text-regions
             page width nil nil
             `(,(car colors) ,(cdr colors) ,@region)))
