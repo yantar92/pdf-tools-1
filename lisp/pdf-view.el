@@ -238,6 +238,20 @@ regarding display of the region in the later function.")
 
 
 ;; * ================================================================== *
+;; * Continuous scroll
+;; * ================================================================== *
+
+(defun pdf-view-split-position ()
+  "Determine position for separating overlays."
+  ;; (let* ((lines (count-lines (point-min) (point-max)))
+  ;;        (half-lines (/ lines 2)))
+  ;;   (forward-line half-lines)
+  (forward-line 2)
+  (print (current-column))
+  (point))
+
+
+;; * ================================================================== *
 ;; * Major Mode
 ;; * ================================================================== *
 
@@ -343,6 +357,9 @@ PNG images in Emacs buffers."
   (remove-overlays (point-min) (point-max) 'pdf-view t) ;Just in case.
 
   ;; Setup other local variables.
+  ;; Determine split position for overlays
+  (setq-local split-position (pdf-view-split-position))
+  (goto-char (point-min))
   (setq-local mode-line-position
               '(" P" (:eval (number-to-string (pdf-view-current-page)))
                 ;; Avoid errors during redisplay.
@@ -978,30 +995,39 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
                                    (* (nth 2 slice)
                                       (car (image-size image)))
                                  (car (image-size image))))))
+             ;; (im2 (pdf-view-create-page (print (+ (pdf-view-current-page) 1))))
         (setf (pdf-view-current-image window) image)
-        (move-overlay ol (point-min) (point-max))
-        ;; In case the window is wider than the image, center the image
-        ;; horizontally.
-        (overlay-put ol 'before-string
-                     (when (> (window-width window)
-                              displayed-width)
-                       (propertize " " 'display
-                                   `(space :align-to
-                                           ,(/ (- (window-width window)
-                                                  displayed-width) 2)))))
-        (overlay-put ol 'display
-                     (if slice
-                         (list (cons 'slice
-                                     (pdf-util-scale slice size 'round))
-                               image)
-                       image))
-        (let* ((win (overlay-get ol 'window))
-               (hscroll (image-mode-window-get 'hscroll win))
-               (vscroll (image-mode-window-get 'vscroll win)))
-          ;; Reset scroll settings, in case they were changed.
-          (if hscroll (set-window-hscroll win hscroll))
-          (if vscroll (set-window-vscroll
-                       win vscroll pdf-view-have-image-mode-pixel-vscroll)))))))
+        (remove-overlays)
+        ;; (move-overlay ol (point-min) (point-max))
+        (let (
+              (ol (make-overlay (point-min) split-position ))
+              ;; (ol (make-overlay (point-min) (point-max)))
+              (ol2 (make-overlay (+ split-position 1) (point-max)))
+              (im2 (pdf-view-create-page (+ (pdf-view-current-page) 1))))
+          ;; In case the window is wider than the image, center the image
+          ;; horizontally.
+          (overlay-put ol 'before-string
+                       (when (> (window-width window)
+                                displayed-width)
+                         (propertize " " 'display
+                                     `(space :align-to
+                                             ,(/ (- (window-width window)
+                                                    displayed-width) 2)))))
+          (overlay-put ol 'display
+                       (if slice
+                           (list (cons 'slice
+                                        (pdf-util-scale slice size 'round))
+                                 image)
+                         image))
+          ;; (print (image-property im2 :page))
+          (overlay-put ol2 'display im2)
+          (let* ((win (overlay-get ol 'window))
+                 (hscroll (image-mode-window-get 'hscroll win))
+                 (vscroll (image-mode-window-get 'vscroll win)))
+            ;; Reset scroll settings, in case they were changed.
+            (if hscroll (set-window-hscroll win hscroll))
+            (if vscroll (set-window-vscroll
+                         win vscroll pdf-view-have-image-mode-pixel-vscroll))))))))
 
 (defun pdf-view-redisplay (&optional window)
   "Redisplay page in WINDOW.
