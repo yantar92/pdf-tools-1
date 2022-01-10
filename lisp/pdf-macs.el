@@ -27,9 +27,9 @@
   ;;TODO: write documentation!
   `(bookroll-mode-window-get 'page ,window))
 
-(defmacro pdf-view-current-overlay (&optional window)
+(defmacro pdf-view-current-overlays (&optional window)
   ;;TODO: write documentation!
-  `(bookroll-mode-window-get 'overlay ,window))
+  `(bookroll-mode-window-get 'overlays ,window))
 
 (defmacro pdf-view-current-image (&optional window)
   ;;TODO: write documentation!

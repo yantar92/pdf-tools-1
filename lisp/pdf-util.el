@@ -716,7 +716,7 @@ string."
                        (cdr (pdf-view-image-offset))
                        (window-vscroll nil t)
                        (frame-char-height))))
-    (when (overlay-get (pdf-view-current-overlay) 'before-string)
+    (when (overlay-get (pdf-view-current-overlays) 'before-string)
       (let* ((e (window-inside-pixel-edges))
              (xw (pdf-util-with-edges (e) e-width)))
         (cl-incf dx (/ (- xw (car (pdf-view-image-size t))) 2))))

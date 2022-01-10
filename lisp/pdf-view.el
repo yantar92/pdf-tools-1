@@ -195,6 +195,8 @@ Issue a warning, if one of them is active in a PDF buffer."
 
 (defvar-local image-sizes nil)
 
+(defvar-local currently-displayed-pages nil)
+
 (defvar-local pdf-view-active-region nil
   "The active region as a list of edges.
 
@@ -396,11 +398,27 @@ PNG images in Emacs buffers."
             'pdf-view-new-window-function nil t)
   (bookroll-mode-setup-winprops)
 
+  (setq image-sizes (mapcar (lambda (p)
+                              ;; (let ((size (pdf-view-desired-image-size page window)))
+                              (pdf-view-desired-image-size p))
+                            ;; (pdf-info-pagesize p)
+                            (number-sequence 1 (pdf-info-number-of-pages))))
+  (setq image-positions (let ((sum 0)
+                              positions)
+                          (dolist (s image-sizes)
+                            (push sum positions)
+                            (setq sum (+ sum (cdr s))))
+                          (nreverse positions)))
+  (setq number-of-pages (length image-sizes))
+
+  (br-create-overlays-list)
+  (br-create-placeholders)
+
   ;; Issue a warning in the future about incompatible modes.
   (run-with-timer 1 nil (lambda (buffer)
                           (when (buffer-live-p buffer)
                             (pdf-view-check-incompatible-modes buffer)))
-		              (print (current-buffer))))
+		              (current-buffer)))
 
 (unless (version< emacs-version "24.4")
   (advice-add 'cua-copy-region
@@ -964,55 +982,70 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
 (defun pdf-view-display-page (page &optional window)
   "Display page PAGE in WINDOW."
   (setf (pdf-view-window-needs-redisplay window) nil)
-  (pdf-view-display-image
-   (pdf-view-create-page page window)
-   window))
+  ;; (let ((display-pages (pcase page
+  ;;                        (1 '(1 2))
+  ;;                        ((pred (= number-of-pages)) (list page (- page 1)))
+  ;;                        (p (list (- p 1) p (+ p 1))))))
+  ;;   (dolist (p currently-displayed-pages)
+  ;;     (unless (member p display-pages)
+  ;;       (br-undisplay-page p)))
+  ;;   (dolist (p display-pages)
+  ;;     (br-display-page p))
+  ;;   (setq currently-displayed-pages display-pages))
+  ;; (br-display-page 1
+  (br-update-page-triplet page
+   ;; (pdf-view-create-page page window)
+   ;; window
+   ))
 
-(defun pdf-view-display-image (image &optional window inhibit-slice-p)
-  ;; TODO: write documentation!
-  (let ((ol (pdf-view-current-overlay window)))
-    (when (window-live-p (overlay-get ol 'window))
-      (let* ((size (image-size image t))
-             (slice (if (not inhibit-slice-p)
-                        (pdf-view-current-slice window)))
-             (displayed-width (floor
-                               (if slice
-                                   (* (nth 2 slice)
-                                      (car (image-size image)))
-                                 (car (image-size image))))))
-             ;; (im2 (pdf-view-create-page (print (+ (pdf-view-current-page) 1))))
-        (setf (pdf-view-current-image window) image)
-        (remove-overlays)
-        ;; (move-overlay ol (point-min) (point-max))
-        (let (
-              (ol (make-overlay (point-min) (print (- split-position 2))))
-              ;; (ol (make-overlay (point-min) (point-max)))
-              (ol2 (make-overlay (- split-position 1) (point-max)))
-              (im2 (pdf-view-create-page (+ (pdf-view-current-page) 1))))
-          ;; In case the window is wider than the image, center the image
-          ;; horizontally.
-          (overlay-put ol 'before-string
-                       (when (> (window-width window)
-                                displayed-width)
-                         (propertize " " 'display
-                                     `(space :align-to
-                                             ,(/ (- (window-width window)
-                                                    displayed-width) 2)))))
-          (overlay-put ol 'display
-                       (if slice
-                           (list (cons 'slice
-                                        (pdf-util-scale slice size 'round))
-                                 image)
-                         image))
-          ;; (print (image-property im2 :page))
-          (overlay-put ol2 'display im2)
-          (let* ((win (overlay-get ol 'window))
-                 (hscroll (image-mode-window-get 'hscroll win))
-                 (vscroll (image-mode-window-get 'vscroll win)))
-            ;; Reset scroll settings, in case they were changed.
-            (if hscroll (set-window-hscroll win hscroll))
-            (if vscroll (set-window-vscroll
-                         win vscroll pdf-view-have-image-mode-pixel-vscroll))))))))
+;; (defun pdf-view-display-image (image &optional window inhibit-slice-p)
+;;   ;; TODO: write documentation!
+;;   (let ((overlays (pdf-view-current-overlays window)))
+;;     (when (window-live-p (overlay-get (car overlays) 'window))
+;;       (br-display-page 1 image)))
+;;   (goto-char (point-min)))
+
+      ;; (let* ((size (image-size image t))
+      ;;        (slice (if (not inhibit-slice-p)
+      ;;                   (pdf-view-current-slice window)))
+      ;;        (displayed-width (floor
+      ;;                          (if slice
+      ;;                              (* (nth 2 slice)
+      ;;                                 (car (image-size image)))
+      ;;                            (car (image-size image))))))
+      ;;        ;; (im2 (pdf-view-create-page (print (+ (pdf-view-current-page) 1))))
+      ;;   (setf (pdf-view-current-image window) image)
+      ;;   (remove-overlays)
+      ;;   ;; (move-overlay overlays (point-min) (point-max))
+      ;;   (let (
+      ;;         (overlays (make-overlay (point-min) (print (- split-position 2))))
+      ;;         ;; (overlays (make-overlay (point-min) (point-max)))
+      ;;         (ol2 (make-overlay (- split-position 1) (point-max)))
+      ;;         (im2 (pdf-view-create-page (+ (pdf-view-current-page) 1))))
+      ;;     ;; In case the window is wider than the image, center the image
+      ;;     ;; horizontally.
+      ;;     (overlay-put overlays 'before-string
+      ;;                  (when (> (window-width window)
+      ;;                           displayed-width)
+      ;;                    (propertize " " 'display
+      ;;                                `(space :align-to
+      ;;                                        ,(/ (- (window-width window)
+      ;;                                               displayed-width) 2)))))
+      ;;     (overlay-put overlays 'display
+      ;;                  (if slice
+      ;;                      (list (cons 'slice
+      ;;                                   (pdf-util-scale slice size 'round))
+      ;;                            image)
+      ;;                    image))
+      ;;     ;; (print (image-property im2 :page))
+      ;;     (overlay-put ol2 'display im2)
+      ;;     (let* ((win (overlay-get overlays 'window))
+      ;;            (hscroll (image-mode-window-get 'hscroll win))
+      ;;            (vscroll (image-mode-window-get 'vscroll win)))
+      ;;       ;; Reset scroll settings, in case they were changed.
+      ;;       (if hscroll (set-window-hscroll win hscroll))
+      ;;       (if vscroll (set-window-vscroll
+      ;;                    win vscroll pdf-view-have-image-mode-pixel-vscroll))))))))
 
 (defun pdf-view-redisplay (&optional window)
   "Redisplay page in WINDOW.
@@ -1073,21 +1106,21 @@ If WINDOW is t, redisplay pages in all windows."
 ;;   ;; (message "New window %s for buf %s" (car winprops) (current-buffer))
 ;;   (cl-assert (or (eq t (car winprops))
 ;;                  (eq (window-buffer (car winprops)) (current-buffer))))
-;;   (let ((ol (image-mode-window-get 'overlay winprops)))
-;;     (if ol
+;;   (let ((overlays (image-mode-window-get 'overlay winprops)))
+;;     (if overlays
 ;;         (progn
-;;           (setq ol (copy-overlay ol))
-;;           ;; `ol' might actually be dead.
-;;           (move-overlay ol (point-min) (point-max)))
-;;       (setq ol (make-overlay (point-min) (point-max) nil t))
-;;       (overlay-put ol 'pdf-view t))
-;;     (overlay-put ol 'window (car winprops))
+;;           (setq overlays (copy-overlay overlays))
+;;           ;; `overlays' might actually be dead.
+;;           (move-overlay overlays (point-min) (point-max)))
+;;       (setq overlays (make-overlay (point-min) (point-max) nil t))
+;;       (overlay-put overlays 'pdf-view t))
+;;     (overlay-put overlays 'window (car winprops))
 ;;     (unless (windowp (car winprops))
 ;;       ;; It's a pseudo entry.  Let's make sure it's not displayed (the
 ;;       ;; `window' property is only effective if its value is a window).
 ;;       (cl-assert (eq t (car winprops)))
-;;       (delete-overlay ol))
-;;     (image-mode-window-put 'overlay ol winprops)
+;;       (delete-overlay overlays))
+;;     (image-mode-window-put 'overlay overlays winprops)
 ;;     ;; Clean up some overlays.
 ;;     (dolist (ov (overlays-in (point-min) (point-max)))
 ;;       (when (and (windowp (overlay-get ov 'window))
@@ -1106,23 +1139,25 @@ If WINDOW is t, redisplay pages in all windows."
   ;; (message "New window %s for buf %s" (car winprops) (current-buffer))
   (cl-assert (or (eq t (car winprops))
                  (eq (window-buffer (car winprops)) (current-buffer))))
-  (print winprops)
-  (setq image-sizes (mapcar (lambda (p)
-                             ;; (let ((size (pdf-view-desired-image-size page window)))
-                               (pdf-view-desired-image-size p))
-                               ;; (pdf-info-pagesize p)
-                             (number-sequence 1 (pdf-info-number-of-pages))))
-  (let ((overlays (image-mode-window-get 'overlays winprops)))
-    (setq overlays (print (br-create-overlays-list)))
-    (br-create-placeholders)))
-  ;;     (overlay-put ol 'pdf-view t))
-  ;;   (overlay-put ol 'window (car winprops))
+  ;; (when (bookroll-mode-window-get 'overlays winprops)
+  (when (windowp (car winprops))
+    ;; It's a pseudo entry.  Let's make sure it's not displayed (the
+    ;; `window' property is only effective if its value is a window).
+    (overlay-put (car overlays) 'window (car winprops)))
+  (bookroll-mode-window-put 'overlays overlays winprops)
+  (when (windowp (car winprops))
+    (with-selected-window (car winprops)
+      (pdf-view-goto-page
+       (or (bookroll-mode-window-get 'page t) 1))))
+  (goto-char (point-min)))
+  ;;     (overlay-put overlays 'pdf-view t))
+  ;;   (overlay-put overlays 'window (car winprops))
   ;;   (unless (windowp (car winprops))
   ;;     ;; It's a pseudo entry.  Let's make sure it's not displayed (the
   ;;     ;; `window' property is only effective if its value is a window).
   ;;     (cl-assert (eq t (car winprops)))
-  ;;     (delete-overlay ol))
-  ;;   (image-mode-window-put 'overlay ol winprops)
+  ;;     (delete-overlay overlays))
+  ;;   (image-mode-window-put 'overlay overlays winprops)
   ;;   ;; Clean up some overlays.
   ;;   (dolist (ov (overlays-in (point-min) (point-max)))
   ;;     (when (and (windowp (overlay-get ov 'window))
