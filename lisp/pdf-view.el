@@ -1019,6 +1019,10 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
 
 If WINDOW is t, redisplay pages in all windows."
   (unless pdf-view-inhibit-redisplay
+    (when overlays-list
+      (mapcar #'delete-overlay
+              overlays-list)
+      (setq overlays-list nil))
 
     (setq image-sizes (mapcar (lambda (p)
                                 ;; (let ((size (pdf-view-desired-image-size page window)))
