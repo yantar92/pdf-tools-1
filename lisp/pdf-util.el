@@ -501,7 +501,7 @@ pixels. This is because of a change that occurred to `bookroll-mode' in 27."
 
         (when vscroll
           (round
-           ;; `image-set-window-vscroll' changed in version 27 to using
+           ;; `bookroll-set-window-vscroll' changed in version 27 to using
            ;; pixels, not lines.
            (if (version< emacs-version "27")
                (/ vscroll (float (frame-char-height)))
@@ -516,9 +516,9 @@ which case scroll as much as possible."
   (let ((vscroll (pdf-util-required-vscroll edges eager-p))
         (hscroll (pdf-util-required-hscroll edges eager-p)))
     (when vscroll
-      (image-set-window-vscroll vscroll))
+      (bookroll-set-window-vscroll vscroll))
     (when hscroll
-      (image-set-window-hscroll hscroll))))
+      (bookroll-set-window-hscroll hscroll))))
 
 
 
@@ -712,7 +712,7 @@ string."
             ,@tooltip-frame-parameters))
          (tooltip-hide-delay (or timeout 3)))
     (when vscroll
-      (image-set-window-vscroll vscroll))
+      (bookroll-set-window-vscroll vscroll))
     (setq dy (max 0 (- dy
                        (cdr (pdf-view-image-offset))
                        (window-vscroll nil t)
