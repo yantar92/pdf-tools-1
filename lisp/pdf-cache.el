@@ -391,7 +391,7 @@ See also `pdf-info-renderpage-highlight' and
 
 See `pdf-cache-prefetch-pages-function' for an explanation of
 what this function does."
-  (let ((page (pdf-view-current-page)))
+  (let ((page (br-current-page)))
     (pdf-util-remove-duplicates
      (cl-remove-if-not
       (lambda (page)
@@ -406,7 +406,7 @@ what this function does."
                          sign (- sign)
                          incr (1+ incr))
                    page)
-                 (number-sequence 1 16)))
+                 (number-sequence 1 32)))
        ;; First and last
        (list 1 (pdf-cache-number-of-pages))
        ;; Links
@@ -415,7 +415,7 @@ what this function does."
         (cl-remove-if-not
          (lambda (link) (eq (alist-get 'type link) 'goto-dest))
          (pdf-cache-pagelinks
-          (pdf-view-current-page)))))))))
+          (br-current-page)))))))))
 
 (defvar pdf-view-use-scaling)
 (defun pdf-cache--prefetch-pages (window image-width)
