@@ -208,7 +208,7 @@ scroll the current page."
          (with-selected-window window
            (when (derived-mode-p 'pdf-view-mode)
              (when (> .page 0)
-               (pdf-view-goto-page .page))
+               (br-goto-page .page))
              (when .top
                ;; Showing the tooltip delays displaying the page for
                ;; some reason (sit-for/redisplay don't help), do it
