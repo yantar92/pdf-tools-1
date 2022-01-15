@@ -25,26 +25,26 @@
 
 (defmacro pdf-view-current-page (&optional window)
   ;;TODO: write documentation!
-  `(image-mode-window-get 'page ,window))
+  `(bookroll-mode-window-get 'page ,window))
 
 (defmacro pdf-view-current-overlay (&optional window)
   ;;TODO: write documentation!
-  `(image-mode-window-get 'overlay ,window))
+  `(bookroll-mode-window-get 'overlay ,window))
 
 (defmacro pdf-view-current-image (&optional window)
   ;;TODO: write documentation!
-  `(image-mode-window-get 'image ,window))
+  `(bookroll-mode-window-get 'image ,window))
 
 (defmacro pdf-view-current-slice (&optional window)
   ;;TODO: write documentation!
-  `(image-mode-window-get 'slice ,window))
+  `(bookroll-mode-window-get 'slice ,window))
 
 (defmacro pdf-view-current-window-size (&optional window)
   ;;TODO: write documentation!
-  `(image-mode-window-get 'window-size ,window))
+  `(bookroll-mode-window-get 'window-size ,window))
 
 (defmacro pdf-view-window-needs-redisplay (&optional window)
-  `(image-mode-window-get 'needs-redisplay ,window))
+  `(bookroll-mode-window-get 'needs-redisplay ,window))
 
 (provide 'pdf-macs)
 

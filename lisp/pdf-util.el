@@ -84,18 +84,19 @@ remove the entry if the new value is `eql' to DEFAULT."
                (frame-char-width (window-frame ,window*)))))
     `(window-body-width ,window t)))
 
-;; In Emacs 24.3 image-mode-winprops leads to infinite recursion.
+;; In Emacs 24.3 bookroll-mode-winprops leads to infinite recursion.
 (unless (or (> emacs-major-version 24)
             (and (= emacs-major-version 24)
                  (>= emacs-minor-version 4)))
   (require 'image-mode)
-  (defvar image-mode-winprops-original-function
-    (symbol-function 'image-mode-winprops))
-  (defvar image-mode-winprops-alist)
-  (eval-after-load "image-mode"
-    '(defun image-mode-winprops (&optional window cleanup)
+  (eval-when-compile (load "~/git/bookroll.el/bookroll.el"))
+  (defvar bookroll-mode-winprops-original-function
+    (symbol-function 'bookroll-mode-winprops))
+  (defvar bookroll-mode-winprops-alist)
+  (eval-after-load "bookroll-mode"
+    '(defun bookroll-mode-winprops (&optional window cleanup)
        (if (not (eq major-mode 'pdf-view-mode))
-           (funcall image-mode-winprops-original-function
+           (funcall bookroll-mode-winprops-original-function
                     window cleanup)
          (cond ((null window)
                 (setq window
@@ -104,25 +105,25 @@ remove the entry if the new value is `eql' to DEFAULT."
                ((not (windowp window))
                 (error "Not a window: %s" window)))
          (when cleanup
-           (setq image-mode-winprops-alist
+           (setq bookroll-mode-winprops-alist
                  (delq nil (mapcar (lambda (winprop)
                                      (let ((w (car-safe winprop)))
                                        (if (or (not (windowp w)) (window-live-p w))
                                            winprop)))
-                                   image-mode-winprops-alist))))
-         (let ((winprops (assq window image-mode-winprops-alist)))
+                                   bookroll-mode-winprops-alist))))
+         (let ((winprops (assq window bookroll-mode-winprops-alist)))
            ;; For new windows, set defaults from the latest.
            (if winprops
                ;; Move window to front.
-               (setq image-mode-winprops-alist
-                     (cons winprops (delq winprops image-mode-winprops-alist)))
+               (setq bookroll-mode-winprops-alist
+                     (cons winprops (delq winprops bookroll-mode-winprops-alist)))
              (setq winprops (cons window
-                                  (copy-alist (cdar image-mode-winprops-alist))))
+                                  (copy-alist (cdar bookroll-mode-winprops-alist))))
              ;; Add winprops before running the hook, to avoid inf-loops if the hook
              ;; triggers window-configuration-change-hook.
-             (setq image-mode-winprops-alist
-                   (cons winprops image-mode-winprops-alist))
-             (run-hook-with-args 'image-mode-new-window-functions winprops))
+             (setq bookroll-mode-winprops-alist
+                   (cons winprops bookroll-mode-winprops-alist))
+             (run-hook-with-args 'bookroll-mode-new-window-functions winprops))
            winprops)))))
 
 
@@ -469,7 +470,7 @@ Return the required vscroll in pixels or nil, if scrolling is not
 needed.
 
 Note: For versions of emacs before 27 this will return lines instead of
-pixels. This is because of a change that occurred to `image-mode' in 27."
+pixels. This is because of a change that occurred to `bookroll-mode' in 27."
   (pdf-util-assert-pdf-window)
   (let* ((win (window-inside-pixel-edges))
          (image-height (cdr (pdf-view-image-size t)))

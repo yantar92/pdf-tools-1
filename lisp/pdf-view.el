@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'image-mode)
+(eval-when-compile (load "~/git/bookroll.el/bookroll.el"))
 (require 'pdf-macs)
 (require 'pdf-util)
 (require 'pdf-info)
@@ -232,9 +233,9 @@ regarding display of the region in the later function.")
   `(unless (pdf-view-active-region-p)
      (error "The region is not active")))
 
-(defconst pdf-view-have-image-mode-pixel-vscroll
+(defconst pdf-view-have-bookroll-mode-pixel-vscroll
   (>= emacs-major-version 27)
-  "Whether `image-mode' scrolls vertically by pixels.")
+  "Whether `bookroll-mode' scrolls vertically by pixels.")
 
 
 ;; * ================================================================== *
@@ -243,7 +244,7 @@ regarding display of the region in the later function.")
 
 (defvar pdf-view-mode-map
   (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map image-mode-map)
+    (set-keymap-parent map bookroll-mode-map)
     (define-key map (kbd "Q")         'kill-this-buffer)
     ;; Navigation in the document
     (define-key map (kbd "n")         'pdf-view-next-page-command)
@@ -389,9 +390,9 @@ PNG images in Emacs buffers."
    'pdf-view-text-regions-hotspots-function -9)
 
   ;; Keep track of display info
-  (add-hook 'image-mode-new-window-functions
+  (add-hook 'bookroll-mode-new-window-functions
             'pdf-view-new-window-function nil t)
-  (image-mode-setup-winprops)
+  (bookroll-mode-setup-winprops)
 
   ;; Issue a warning in the future about incompatible modes.
   (run-with-timer 1 nil (lambda (buffer)
@@ -696,7 +697,7 @@ next page only on typing SPC (ARG is nil)."
   (if (or pdf-view-continuous (null arg))
       (let ((hscroll (window-hscroll))
             (cur-page (pdf-view-current-page)))
-        (when (or (= (window-vscroll nil pdf-view-have-image-mode-pixel-vscroll)
+        (when (or (= (window-vscroll nil pdf-view-have-bookroll-mode-pixel-vscroll)
                      (image-scroll-up arg))
                   ;; Workaround rounding/off-by-one issues.
                   (memq pdf-view-display-size
@@ -718,7 +719,7 @@ to previous page only on typing DEL (ARG is nil)."
   (if (or pdf-view-continuous (null arg))
       (let ((hscroll (window-hscroll))
             (cur-page (pdf-view-current-page)))
-        (when (or (= (window-vscroll nil pdf-view-have-image-mode-pixel-vscroll)
+        (when (or (= (window-vscroll nil pdf-view-have-bookroll-mode-pixel-vscroll)
                      (image-scroll-down arg))
                   ;; Workaround rounding/off-by-one issues.
                   (memq pdf-view-display-size
@@ -739,7 +740,7 @@ at the bottom edge of the page moves to the next page."
   (if pdf-view-continuous
       (let ((hscroll (window-hscroll))
             (cur-page (pdf-view-current-page)))
-        (when (= (window-vscroll nil pdf-view-have-image-mode-pixel-vscroll)
+        (when (= (window-vscroll nil pdf-view-have-bookroll-mode-pixel-vscroll)
                  (image-next-line arg))
           (pdf-view-next-page)
           (when (/= cur-page (pdf-view-current-page))
@@ -757,7 +758,7 @@ at the top edge of the page moves to the previous page."
   (if pdf-view-continuous
       (let ((hscroll (window-hscroll))
             (cur-page (pdf-view-current-page)))
-        (when (= (window-vscroll nil pdf-view-have-image-mode-pixel-vscroll)
+        (when (= (window-vscroll nil pdf-view-have-bookroll-mode-pixel-vscroll)
                  (image-previous-line arg))
           (pdf-view-previous-page)
           (when (/= cur-page (pdf-view-current-page))
@@ -930,7 +931,8 @@ See also `pdf-view-use-imagemagick'."
     (pdf-view-create-image data
       :width (car size)
       :map hotspots
-      :pointer 'arrow)))
+      :pointer 'arrow
+      :page page)))
 
 (defun pdf-view-image-size (&optional displayed-p window)
   ;; TODO: add WINDOW to docstring.
@@ -962,51 +964,78 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
   "Display page PAGE in WINDOW."
   (setf (pdf-view-window-needs-redisplay window) nil)
   (pdf-view-display-image
-   (pdf-view-create-page page window)
+   page
    window))
 
-(defun pdf-view-display-image (image &optional window inhibit-slice-p)
+(defun pdf-view-display-image (page &optional window inhibit-slice-p)
   ;; TODO: write documentation!
-  (let ((ol (pdf-view-current-overlay window)))
+  (let ((ol (pdf-view-current-overlay window))
+        (display-pages (pcase page
+                         (1 '(1 2))
+                         ((pred (= number-of-pages)) (list page (- page 1)))
+                         (p (list (- p 1) p (+ p 1))))))
     (when (window-live-p (overlay-get ol 'window))
-      (let* ((size (image-size image t))
-             (slice (if (not inhibit-slice-p)
-                        (pdf-view-current-slice window)))
-             (displayed-width (floor
-                               (if slice
-                                   (* (nth 2 slice)
-                                      (car (image-size image)))
-                                 (car (image-size image))))))
-        (setf (pdf-view-current-image window) image)
-        (move-overlay ol (point-min) (point-max))
-        ;; In case the window is wider than the image, center the image
-        ;; horizontally.
-        (overlay-put ol 'before-string
-                     (when (> (window-width window)
-                              displayed-width)
-                       (propertize " " 'display
-                                   `(space :align-to
-                                           ,(/ (- (window-width window)
-                                                  displayed-width) 2)))))
-        (overlay-put ol 'display
-                     (if slice
-                         (list (cons 'slice
-                                     (pdf-util-scale slice size 'round))
-                               image)
-                       image))
-        (let* ((win (overlay-get ol 'window))
-               (hscroll (image-mode-window-get 'hscroll win))
-               (vscroll (image-mode-window-get 'vscroll win)))
-          ;; Reset scroll settings, in case they were changed.
-          (if hscroll (set-window-hscroll win hscroll))
-          (if vscroll (set-window-vscroll
-                       win vscroll pdf-view-have-image-mode-pixel-vscroll)))))))
+      (dolist (p currently-displayed-pages)
+        (unless (member p display-pages)
+          (br-undisplay-page p)))
+      (dolist (p display-pages)
+        (let* ((image (pdf-view-create-page p window))
+               (size (image-size image t))
+               (slice (if (not inhibit-slice-p)
+                          (pdf-view-current-slice window)))
+               (displayed-width (floor
+                                 (if slice
+                                     (* (nth 2 slice)
+                                        (car (image-size image)))
+                                   (car (image-size image))))))
+          (setf (pdf-view-current-image window) image)
+          ;; (move-overlay ol (point-min) (point-max))
+          ;; In case the window is wider than the image, center the image
+          ;; horizontally.
+          (overlay-put (nth (1- p) overlays-list) 'before-string
+                       (when (> (window-width window)
+                                displayed-width)
+                         (propertize " " 'display
+                                     `(space :align-to
+                                             ,(/ (- (window-width window)
+                                                    displayed-width) 2)))))
+          (overlay-put (nth (1- p) overlays-list) 'display
+                       (if slice
+                                 (list (cons 'slice
+                                             (pdf-util-scale slice size 'round))
+                                       image)
+                         image))
+          (let* ((win (overlay-get ol 'window))
+                 (hscroll (bookroll-mode-window-get 'hscroll win))
+                 (vscroll (bookroll-mode-window-get 'vscroll win)))
+            ;; Reset scroll settings, in case they were changed.
+            (if hscroll (set-window-hscroll win hscroll))
+            (if vscroll (set-window-vscroll
+                         win vscroll pdf-view-have-bookroll-mode-pixel-vscroll))))))
+    (setq currently-displayed-pages display-pages)))
 
 (defun pdf-view-redisplay (&optional window)
   "Redisplay page in WINDOW.
 
 If WINDOW is t, redisplay pages in all windows."
   (unless pdf-view-inhibit-redisplay
+
+    (setq image-sizes (mapcar (lambda (p)
+                                ;; (let ((size (pdf-view-desired-image-size page window)))
+                                (pdf-view-desired-image-size p))
+                              ;; (pdf-info-pagesize p)
+                              (number-sequence 1 (pdf-info-number-of-pages))))
+    (setq image-positions (let ((sum 0)
+                                positions)
+                            (dolist (s image-sizes)
+                              (push sum positions)
+                              (setq sum (+ sum (cdr s))))
+                            (nreverse positions)))
+    (setq number-of-pages (length image-sizes))
+
+    (br-create-overlays-list)
+    (br-create-placeholders)
+
     (if (not (eq t window))
         (pdf-view-display-page
          (pdf-view-current-page window)
@@ -1015,8 +1044,8 @@ If WINDOW is t, redisplay pages in all windows."
         (pdf-view-display-page
          (pdf-view-current-page win)
          win))
-      (when (consp image-mode-winprops-alist)
-        (dolist (window (mapcar #'car image-mode-winprops-alist))
+      (when (consp bookroll-mode-winprops-alist)
+        (dolist (window (mapcar #'car bookroll-mode-winprops-alist))
           (unless (or (not (window-live-p window))
                       (eq (current-buffer)
                           (window-buffer window)))
@@ -1060,7 +1089,7 @@ If WINDOW is t, redisplay pages in all windows."
   ;; (message "New window %s for buf %s" (car winprops) (current-buffer))
   (cl-assert (or (eq t (car winprops))
                  (eq (window-buffer (car winprops)) (current-buffer))))
-  (let ((ol (image-mode-window-get 'overlay winprops)))
+  (let ((ol (bookroll-mode-window-get 'overlay winprops)))
     (if ol
         (progn
           (setq ol (copy-overlay ol))
@@ -1074,19 +1103,20 @@ If WINDOW is t, redisplay pages in all windows."
       ;; `window' property is only effective if its value is a window).
       (cl-assert (eq t (car winprops)))
       (delete-overlay ol))
-    (image-mode-window-put 'overlay ol winprops)
+    (bookroll-mode-window-put 'overlay ol winprops)
     ;; Clean up some overlays.
     (dolist (ov (overlays-in (point-min) (point-max)))
       (when (and (windowp (overlay-get ov 'window))
                  (not (window-live-p (overlay-get ov 'window))))
         (delete-overlay ov)))
     (when (and (windowp (car winprops))
-               (null (image-mode-window-get 'image winprops)))
+               (null (bookroll-mode-window-get 'image winprops)))
       ;; We're not displaying an image yet, so let's do so.  This
       ;; happens when the buffer is displayed for the first time.
       (with-selected-window (car winprops)
         (pdf-view-goto-page
-         (or (image-mode-window-get 'page t) 1))))))
+         (or (bookroll-mode-window-get 'page t) 1))
+        (goto-char (point-min))))))
 
 (defun pdf-view-desired-image-size (&optional page window)
   ;; TODO: write documentation!
@@ -1515,7 +1545,7 @@ the `convert' program is used."
               (erase-buffer))
             (set-buffer-multibyte nil)
             (insert-file-contents-literally result)
-            (image-mode)
+            (bookroll-mode)
             (unless no-display-p
               (pop-to-buffer (current-buffer)))))
       (dolist (f (cons result images))
@@ -1582,7 +1612,7 @@ See also `pdf-view-bookmark-make-record'."
                              (frame-char-width))))
                   (image-set-window-vscroll
                    (round (/ (* (cdr origin) (cdr size))
-                             (if pdf-view-have-image-mode-pixel-vscroll
+                             (if pdf-view-have-bookroll-mode-pixel-vscroll
                                  1
                                (frame-char-height))))))))))
     (add-hook 'bookmark-after-jump-hook show-fn-sym)
