@@ -346,8 +346,8 @@ This is a Isearch interface function."
   (setq pdf-isearch-current-page (pdf-view-current-page)
         pdf-isearch-current-match nil
         pdf-isearch-current-matches nil
-        pdf-isearch-current-parameter nil)
-  (goto-char (1+ (/ (buffer-size) 2))))
+        pdf-isearch-current-parameter nil))
+  ;; (goto-char (1+ (/ (buffer-size) 2))))
 
 (defun pdf-isearch-same-search-p (&optional ignore-search-string-p)
   "Return non-nil, if search parameter have not changed.
