@@ -963,11 +963,11 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
 (defun pdf-view-display-page (page &optional window)
   "Display page PAGE in WINDOW."
   (setf (pdf-view-window-needs-redisplay window) nil)
-  (pdf-view-display-image
+  (pdf-view-display-triplet
    page
    window))
 
-(defun pdf-view-display-image (page &optional window inhibit-slice-p)
+(defun pdf-view-display-triplet (page &optional window inhibit-slice-p)
   ;; TODO: write documentation!
   (let ((ol (pdf-view-current-overlay window))
         (display-pages (pcase page
@@ -1013,6 +1013,48 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
             (if vscroll (set-window-vscroll
                          win vscroll pdf-view-have-bookroll-mode-pixel-vscroll))))))
     (setq currently-displayed-pages display-pages)))
+
+;; NOTE the following function tries to fix support for active-regions (select)
+;; see `pdf-view-display-region'. However, it seems that the hscroll/vscroll
+;; however, it seems that the hscroll/vscroll trick is not sufficient for
+;; bookrolls
+(defun pdf-view-display-image (image &optional window inhibit-slice-p)
+  ;; TODO: write documentation!
+  (let ((ol (pdf-view-current-overlay window)))
+    (when (window-live-p (overlay-get ol 'window))
+      (let* ((size (image-size image t))
+             (slice (if (not inhibit-slice-p)
+                        (pdf-view-current-slice window)))
+             (displayed-width (floor
+                               (if slice
+                                   (* (nth 2 slice)
+                                      (car (image-size image)))
+                                 (car (image-size image))))))
+        (setf (pdf-view-current-image window) image)
+        (move-overlay ol (point-min) (point-max))
+        ;; In case the window is wider than the image, center the image
+        ;; horizontally.
+        (let ((current-ol (nth (1- (br-current-page)) overlays-list)))
+          (overlay-put current-ol 'before-string
+                       (when (> (window-width window)
+                                displayed-width)
+                         (propertize " " 'display
+                                     `(space :align-to
+                                             ,(/ (- (window-width window)
+                                                    displayed-width) 2)))))
+          (overlay-put current-ol 'display
+                       (if slice
+                           (list (cons 'slice
+                                       (pdf-util-scale slice size 'round))
+                                 image)
+                         image))
+          (let* ((win (overlay-get ol 'window))
+                 (hscroll (bookroll-mode-window-get 'hscroll win))
+                 (vscroll (bookroll-mode-window-get 'vscroll win)))
+            ;; Reset scroll settings, in case they were changed.
+            (if hscroll (set-window-hscroll win hscroll))
+            (if vscroll (set-window-vscroll
+                         win vscroll pdf-view-have-bookroll-mode-pixel-vscroll))))))))
 
 (defun pdf-view-redisplay (&optional window)
   "Redisplay page in WINDOW.
