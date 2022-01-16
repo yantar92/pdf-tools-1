@@ -491,6 +491,13 @@ Returns the modified annotation."
       (pdf-annot-run-modified-hooks :change a)))
   a)
 
+(defun pdf-view-annot-redisplay (&rest pages)
+  "Redisplay PAGES in all windows."
+  (pdf-util-assert-pdf-buffer)
+  (dolist (window (get-buffer-window-list nil nil t))
+    (dolist (p pages)
+      (pdf-view-display-image (pdf-view-create-page p)))))
+
 (defun pdf-annot-run-modified-hooks (&optional operation &rest annotations)
   "Run `pdf-annot-modified-functions' using OPERATION on ANNOTATIONS.
 
@@ -537,7 +544,8 @@ the variable is nil and this function is called again."
             (run-hook-with-args
              'pdf-annot-modified-functions closure)
           (setq pdf-annot-delayed-modified-annotations nil)
-          (apply #'pdf-view-redisplay-pages pages))))))
+          (apply #'pdf-view-annot-redisplay pages)
+          )))))
 
 (defun pdf-annot-equal (a1 a2)
   "Return non-nil, if annotations A1 and A2 are equal.

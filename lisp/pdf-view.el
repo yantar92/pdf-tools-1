@@ -1016,10 +1016,6 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
                          win vscroll pdf-view-have-bookroll-mode-pixel-vscroll))))))
     (setq currently-displayed-pages display-pages)))
 
-;; NOTE the following function tries to fix support for active-regions (select)
-;; see `pdf-view-display-region'. However, it seems that the hscroll/vscroll
-;; however, it seems that the hscroll/vscroll trick is not sufficient for
-;; bookrolls
 (defun pdf-view-display-image (image &optional window inhibit-slice-p)
   ;; TODO: write documentation!
   (let ((ol (pdf-view-current-overlay window)))
@@ -1380,7 +1376,7 @@ Deactivate the region if DEACTIVATE-P is non-nil."
   (when pdf-view-active-region
     (setq pdf-view-active-region nil)
     (deactivate-mark)
-    (pdf-view-redisplay t)))
+    (pdf-view-annot-redisplay)))
 
 (defun pdf-view-mouse-set-region (event &optional allow-extend-p
                                         rectangle-p)
@@ -1464,7 +1460,8 @@ Stores the region in `pdf-view-active-region'."
                   (pdf-view-display-region
                    (cons region pdf-view-active-region)
                    rectangle-p)
-                  (pdf-util-scroll-to-edges iregion)))))
+                  ;; (pdf-util-scroll-to-edges iregion)
+                  ))))
       (setq pdf-view-active-region
             (append pdf-view-active-region
                     (list region)))
