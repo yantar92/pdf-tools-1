@@ -209,16 +209,17 @@ scroll the current page."
            (when (derived-mode-p 'pdf-view-mode)
              (when (> .page 0)
                (br-goto-page .page))
-             (when .top
-               ;; Showing the tooltip delays displaying the page for
-               ;; some reason (sit-for/redisplay don't help), do it
-               ;; later.
-               (run-with-idle-timer 0.001 nil
-                 (lambda ()
-                   (when (window-live-p window)
-                     (with-selected-window window
-                       (when (derived-mode-p 'pdf-view-mode)
-                         (pdf-util-tooltip-arrow .top)))))))))))
+             ;; (when .top
+             ;;   ;; Showing the tooltip delays displaying the page for
+             ;;   ;; some reason (sit-for/redisplay don't help), do it
+             ;;   ;; later.
+             ;;   (run-with-idle-timer 0.001 nil
+             ;;     (lambda ()
+             ;;       (when (window-live-p window)
+             ;;         (with-selected-window window
+             ;;           (when (derived-mode-p 'pdf-view-mode)
+             ;;             (pdf-util-tooltip-arrow .top)))))))
+             ))))
       (uri
        (funcall pdf-links-browse-uri-function .uri))
       (t
