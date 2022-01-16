@@ -344,6 +344,7 @@ PNG images in Emacs buffers."
 
   ;; Setup other local variables.
   (setq-local mode-line-position
+              ;; for some reason using `br-current-page' does not work here
               '(" P" (:eval (number-to-string (pdf-view-current-page)))
                 ;; Avoid errors during redisplay.
                 "/" (:eval (or (ignore-errors
@@ -969,6 +970,7 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
 
 (defun pdf-view-display-triplet (page &optional window inhibit-slice-p)
   ;; TODO: write documentation!
+  (setf (pdf-view-current-page window) page)
   (let ((ol (pdf-view-current-overlay window))
         (display-pages (pcase page
                          (1 '(1 2))
