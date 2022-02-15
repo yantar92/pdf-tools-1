@@ -386,13 +386,11 @@ PNG images in Emacs buffers."
              (version< emacs-version "24.4"))
     (setq-local cua-mode nil))
 
-  ;; (when pdf-view-display-as-scroll
-  ;;   (require 'pdf-scroll))
+  (when pdf-view-display-as-scroll
+    (require 'pdf-scroll))
 
   (add-hook 'window-configuration-change-hook
-            (if pdf-view-display-as-scroll
-                'pdf-scroll-redisplay-some-windows
-              'pdf-view-redisplay-some-windows)
+              'pdf-view-redisplay-some-windows
             nil t)
   ;; (add-hook 'deactivate-mark-hook 'pdf-view-deactivate-region nil t)
   (add-hook 'write-contents-functions
@@ -1053,6 +1051,18 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
   "Redisplay page in WINDOW.
 
 If WINDOW is t, redisplay pages in all windows."
+  (let ((winprops (assoc window image-mode-winprops-alist))
+        (pages (pdf-cache-number-of-pages))
+        (inhibit-read-only t))
+    (remove-overlays)
+    (erase-buffer)
+    (pdf-scroll-create-overlays-lists pages winprops)
+    (setf (pdf-scroll-image-sizes) (let (s)
+                                     (dotimes (i (pdf-info-number-of-pages) (nreverse s))
+                                       (push (pdf-view-desired-image-size (1+ i)) s))))
+    (setf (pdf-scroll-image-positions) (pdf-scroll-create-image-positions (pdf-scroll-image-sizes)))
+    (pdf-scroll-create-placeholders pages winprops))
+
   (unless pdf-view-inhibit-redisplay
     (if (not (eq t window))
         (pdf-view-display-page
