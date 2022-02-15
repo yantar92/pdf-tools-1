@@ -72,6 +72,11 @@ of the page moves to the previous page."
   :type 'boolean
   :group 'pdf-view)
 
+(defcustom pdf-view-display-as-scroll t
+  "Display and scroll pdf like a virtual roll."
+  :type 'boolean
+  :group 'pdf-view)
+
 (defcustom pdf-view-bounding-box-margin 0.05
   "Fractional margin used for slicing with the bounding-box."
   :group 'pdf-view
@@ -337,7 +342,9 @@ PNG images in Emacs buffers."
   ;; Clearing overlays
   (add-hook 'change-major-mode-hook
             (lambda ()
-              (remove-overlays (point-min) (point-max) 'pdf-view t))
+              (if pdf-view-display-as-scroll
+                  (remove-overlays (point-min) (point-max))
+                (remove-overlays (point-min) (point-max) 'pdf-view t)))
             nil t)
   (remove-overlays (point-min) (point-max) 'pdf-view t) ;Just in case.
 
@@ -379,9 +386,15 @@ PNG images in Emacs buffers."
              (version< emacs-version "24.4"))
     (setq-local cua-mode nil))
 
+  ;; (when pdf-view-display-as-scroll
+  ;;   (require 'pdf-scroll))
+
   (add-hook 'window-configuration-change-hook
-            'pdf-view-redisplay-some-windows nil t)
-  (add-hook 'deactivate-mark-hook 'pdf-view-deactivate-region nil t)
+            (if pdf-view-display-as-scroll
+                'pdf-scroll-redisplay-some-windows
+              'pdf-view-redisplay-some-windows)
+            nil t)
+  ;; (add-hook 'deactivate-mark-hook 'pdf-view-deactivate-region nil t)
   (add-hook 'write-contents-functions
             'pdf-view--write-contents-function nil t)
   (add-hook 'kill-buffer-hook 'pdf-view-close-document nil t)
@@ -390,7 +403,10 @@ PNG images in Emacs buffers."
 
   ;; Keep track of display info
   (add-hook 'image-mode-new-window-functions
-            'pdf-view-new-window-function nil t)
+            (if pdf-view-display-as-scroll
+                'pdf-scroll-new-window-function
+            'pdf-view-new-window-function)
+            nil t)
   (image-mode-setup-winprops)
 
   ;; Issue a warning in the future about incompatible modes.
@@ -613,7 +629,7 @@ windows."
         (pdf-view-redisplay window))
       (when changing-p
         (pdf-view-deactivate-region)
-        (force-mode-line-update)
+        ;; (force-mode-line-update)
         (run-hooks 'pdf-view-after-change-page-hook))))
   nil)
 
@@ -987,9 +1003,14 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
 (defun pdf-view-display-page (page &optional window)
   "Display page PAGE in WINDOW."
   (setf (pdf-view-window-needs-redisplay window) nil)
-  (pdf-view-display-image
-   (pdf-view-create-page page window)
-   window))
+  (if pdf-view-display-as-scroll
+      (pdf-scroll-display-image
+       page
+       (pdf-view-create-page page window)
+       window)
+    (pdf-view-display-image
+     (pdf-view-create-page page window)
+     window)))
 
 (defun pdf-view-display-image (image &optional window inhibit-slice-p)
   ;; TODO: write documentation!
@@ -1047,7 +1068,8 @@ If WINDOW is t, redisplay pages in all windows."
                       (eq (current-buffer)
                           (window-buffer window)))
             (setf (pdf-view-window-needs-redisplay window) t)))))
-    (force-mode-line-update)))
+    ;; (force-mode-line-update)
+    ))
 
 (defun pdf-view-redisplay-pages (&rest pages)
   "Redisplay PAGES in all windows."
@@ -1091,8 +1113,8 @@ If WINDOW is t, redisplay pages in all windows."
         (progn
           (setq ol (copy-overlay ol))
           ;; `ol' might actually be dead.
-          (move-overlay ol (point-min) (point-max)))
-      (setq ol (make-overlay (point-min) (point-max) nil t))
+          (move-overlay ol (point-min) pdf-scroll-contents-end-pos))
+      (setq ol (make-overlay (point-min) pdf-scroll-contents-end-pos nil t))
       (overlay-put ol 'pdf-view t))
     (overlay-put ol 'window (car winprops))
     (unless (windowp (car winprops))
