@@ -199,31 +199,40 @@ overlay-property)."
 (defun pdf-scroll-new-window-function (winprops)
   ;; check if overlays have already been added
   ;; This works reliably for a maximum of two buffers
-  (let ((existing-window (get-char-property (point-min) 'window)))
-    (if (eq (selected-window) existing-window)
-        (when (> (length image-mode-winprops-alist) 2)
-          (let ((overlays (mapcar (lambda (o) (let ((ol (copy-overlay o)))
-                                               (overlay-put ol 'window (car winprops))
-                                               ol))
-                                 (overlays-in (point-min) (point-max)))))))
-      ;; (let ((ol (make-overlay (point-min) (point-max))))
-      ;;   (overlay-put ol 'invisible t))
-      (let ((win (car winprops))
-            (pages (pdf-cache-number-of-pages))
-            (inhibit-read-only t))
-        (erase-buffer)
+  (if (image-mode-window-get 'page-overlays winprops)
+      (let ((i 1)
+            page-overlays
+            separation-overlays)
+        (dolist (o (overlays-in (point-min) (point-max)))
+          (let ((ol (copy-overlay o)))
+            (overlay-put ol 'window (car winprops))
+            (if (evenp i)
+                (push ol separation-overlays)
+              (push ol page-overlays))
+            (setq i (1+ i))))
+        (image-mode-window-put 'page-overlays (nreverse page-overlays) winprops)
+        (image-mode-window-put 'separation-overlays (nreverse separation-overlays) winprops))
+    ;; (let ((ol (make-overlay (point-min) (point-max))))
+    ;;   (overlay-put ol 'invisible t))
+    (let ((pages (pdf-cache-number-of-pages))
+          (inhibit-read-only t))
+      (unless (= (char-after 1) 32)
+        (erase-buffer))
+      (unless (eq (car winprops) t)
         (pdf-scroll-create-overlays-lists pages winprops)
         (setf (pdf-scroll-image-sizes) (let (s)
                                          (dotimes (i (pdf-info-number-of-pages) (nreverse s))
                                            (push (pdf-view-desired-image-size (1+ i)) s))))
         (setf (pdf-scroll-image-positions) (pdf-scroll-create-image-positions (pdf-scroll-image-sizes)))
         (pdf-scroll-create-placeholders pages winprops)
-        (when (windowp (car winprops))
+        (when (and (windowp (car winprops))
+                   (null (image-mode-window-get 'image winprops)))
           ;; We're not displaying an image yet, so let's do so.  This
           ;; happens when the buffer is displayed for the first time.
           (with-selected-window (car winprops)
             (pdf-view-goto-page
              (or (image-mode-window-get 'page t) 1))))))))
+
 
 (define-minor-mode pdf-scroll-mode "Read books in Emacs"
   :lighter "Book"

@@ -35,6 +35,7 @@
 (require 'bookmark)
 (require 'password-cache)
 
+
 (declare-function cua-copy-region "cua-base")
 (declare-function pdf-tools-pdf-buffer-p "pdf-tools")
 
@@ -1004,10 +1005,6 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
   "Display page PAGE in WINDOW."
   (setf (pdf-view-window-needs-redisplay window) nil)
   (if pdf-view-display-as-scroll
-      (pdf-scroll-display-image
-       page
-       (pdf-view-create-page page window)
-       window)
       (dolist (p (pdf-scroll-page-triplet page))
         (pdf-scroll-display-image
          p
@@ -1061,9 +1058,10 @@ If WINDOW is t, redisplay pages in all windows."
   (let ((winprops (assoc window image-mode-winprops-alist))
         (pages (pdf-cache-number-of-pages))
         (inhibit-read-only t))
-    (remove-overlays)
-    (erase-buffer)
-    (pdf-scroll-create-overlays-lists pages winprops)
+    (dolist (ov (overlays-in (point-min) (point-max)))
+      (when (or (eq (overlay-get ov 'face) 'hl-line)
+                 (not (window-live-p (overlay-get ov 'window))))
+        (delete-overlay ov)))
     (setf (pdf-scroll-image-sizes) (let (s)
                                      (dotimes (i (pdf-info-number-of-pages) (nreverse s))
                                        (push (pdf-view-desired-image-size (1+ i)) s))))
