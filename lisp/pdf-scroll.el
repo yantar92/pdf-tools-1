@@ -147,10 +147,11 @@ overlay-property)."
     ;; (e.g. it's used by doc-view to display the image in a new window).
     (let* ((winprops (image-mode-winprops nil t))
            (hscroll (image-mode-window-get 'hscroll winprops))
-           (vscroll (image-mode-window-get 'vscroll winprops)))
+           (vscroll (nth (1- (pdf-view-current-page)) (pdf-scroll-image-positions))))
       (when (image-get-display-property) ;Only do it if we display an image!
-	(if hscroll (set-window-hscroll (selected-window) hscroll))
-	(if vscroll (set-window-vscroll (selected-window) vscroll t))))))
+        (goto-char (point-min)) ;; required for using vscroll
+	      (if hscroll (set-window-hscroll (selected-window) hscroll))
+	      (if vscroll (set-window-vscroll (selected-window) vscroll t))))))
 
 (defun pdf-scroll-setup-winprops ()
   ;; Record current scroll settings.
@@ -186,15 +187,7 @@ overlay-property)."
                          (list (cons 'slice
                                      (pdf-util-scale slice size 'round))
                                image)
-                       image))
-        (goto-char (point-min))))))
-        ;; (let* ((win (overlay-get ol 'window))
-        ;;        (hscroll (image-mode-window-get 'hscroll win))
-        ;;        (vscroll (image-mode-window-get 'vscroll win)))
-        ;;   ;; Reset scroll settings, in case they were changed.
-        ;;   (if hscroll (set-window-hscroll win hscroll))
-        ;;   (if vscroll (set-window-vscroll
-        ;;                win vscroll pdf-view-have-image-mode-pixel-vscroll)))))))
+                       image))))))
 
 (defun pdf-scroll-new-window-function (winprops)
   ;; check if overlays have already been added

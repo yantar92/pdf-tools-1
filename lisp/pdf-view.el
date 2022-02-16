@@ -393,8 +393,7 @@ PNG images in Emacs buffers."
     (require 'pdf-scroll))
 
   (add-hook 'window-configuration-change-hook
-              'pdf-view-redisplay-some-windows
-            nil t)
+              'pdf-view-redisplay-some-windows nil t)
   ;; (add-hook 'deactivate-mark-hook 'pdf-view-deactivate-region nil t)
   (add-hook 'write-contents-functions
             'pdf-view--write-contents-function nil t)
@@ -408,7 +407,8 @@ PNG images in Emacs buffers."
                 'pdf-scroll-new-window-function
             'pdf-view-new-window-function)
             nil t)
-  (image-mode-setup-winprops)
+  ;; (image-mode-setup-winprops)
+  (pdf-scroll-setup-winprops)
 
   ;; Issue a warning in the future about incompatible modes.
   (run-with-timer 1 nil (lambda (buffer)
