@@ -24,20 +24,25 @@
 
 ;;; Code:
 
-(defvar-local pdf-scroll-page-separation-height 5)
+(eval-when-compile
+  (require 'image-mode)
+  (require 'pdf-macs))
+
+(defvar-local pdf-scroll-step-size 50)
+
+(defvar-local pdf-scroll-page-separation-height 2)
 (defvar-local pdf-scroll-page-separation-color "dim gray")
 
-(defvar-local pdf-scroll-contents-end-pos 1
-  "Original file contents end position.
-This info is required for (easily) locating the overlay
-placeholders when creating overlays in a second (or third...
-etc.) buffer window.")
-
-(defmacro pdf-scroll-page-overlays (&optional window) `(image-mode-window-get 'page-overlays ,window))
-(defmacro pdf-scroll-separation-overlays (&optional window) `(image-mode-window-get 'separation-overlays ,window))
-(defmacro pdf-scroll-image-sizes (&optional window) `(image-mode-window-get 'image-sizes ,window))
-(defmacro pdf-scroll-image-positions (&optional window) `(image-mode-window-get 'image-positions ,window))
-(defmacro pdf-scroll-currently-displayed-pages (&optional window) `(image-mode-window-get 'displayed-pages ,window))
+(defmacro pdf-scroll-page-overlays (&optional window)
+  `(image-mode-window-get 'page-overlays ,window))
+(defmacro pdf-scroll-separation-overlays (&optional window)
+  `(image-mode-window-get 'separation-overlays ,window))
+(defmacro pdf-scroll-image-sizes (&optional window)
+  `(image-mode-window-get 'image-sizes ,window))
+(defmacro pdf-scroll-image-positions (&optional window)
+  `(image-mode-window-get 'image-positions ,window))
+(defmacro pdf-scroll-currently-displayed-pages (&optional window)
+  `(image-mode-window-get 'displayed-pages ,window))
 
 (defun pdf-scroll-create-image-positions (image-sizes)
   (let* ((sum 0)
@@ -110,17 +115,28 @@ overlay-property)."
 
 (defun pdf-scroll-page-triplet (page)
   ;; first handle the cases when the doc has only one or two pages
-  (pcase (pdf-scroll-number-of-pages)
+  (pcase (pdf-cache-number-of-pages)
     (1 '(1))
     (2 '(1 2))
     (_ (pcase page
          (1 '(1 2))
-         ((pred (= pdf-scroll-number-of-pages)) (list page (- page 1)))
+         ((pred (= (pdf-cache-number-of-pages))) (list page (- page 1)))
          (p (list (- p 1) p (+ p 1)))))))
 
 (defun pdf-scroll-scroll-forward ()
   (interactive)
-  (set-window-vscroll nil (+ (window-vscroll nil t) 25) t))
+  (let* ((page-end (+ (nth (pdf-view-current-page) (pdf-scroll-image-positions))
+                      pdf-scroll-page-separation-height))
+         (vscroll (window-vscroll nil t))
+         (new-vscroll (image-set-window-vscroll (+ vscroll pdf-scroll-step-size))))
+    (when (> new-vscroll page-end)
+      (let* ((new-page (alist-get 'page (cl-incf (pdf-view-current-page))))
+             (next-page (1+ new-page)))
+        ;; (when (> new-page 2)
+        ;;   (book-remove-page-image (- new-page 2))
+        (pdf-scroll-display-image next-page
+                                  (pdf-view-create-page next-page))
+        (push next-page (pdf-scroll-currently-displayed-pages))))))
 
 (defun pdf-scroll-reapply-winprops ()
   ;; When set-window-buffer, set hscroll and vscroll to what they were
@@ -212,9 +228,10 @@ overlay-property)."
 (define-minor-mode pdf-scroll-mode "Read books in Emacs"
   :lighter "Book"
   :keymap
-  '(("j" . #'pdf-scroll-scroll-forward)))
+  '(("j" . pdf-scroll-scroll-forward)))
 
-(evil-define-minor-mode-key 'normal 'pdf-scroll-mode "j" #'pdf-scroll-scroll-forward)
+(evil-define-minor-mode-key 'normal 'pdf-scroll-mode
+  "j" #'pdf-scroll-scroll-forward)
 
 ;; This is a demo function 
 (defun pdf-scroll-demo (&optional number-of-pages page-size)

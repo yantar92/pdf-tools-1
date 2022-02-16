@@ -25,7 +25,9 @@
 ;;; Code:
 
 (require 'image-mode)
-(require 'pdf-macs)
+(eval-when-compile
+  (require 'pdf-macs)
+  (require 'pdf-scroll))
 (require 'pdf-util)
 (require 'pdf-info)
 (require 'pdf-cache)
@@ -1006,6 +1008,11 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
        page
        (pdf-view-create-page page window)
        window)
+      (dolist (p (pdf-scroll-page-triplet page))
+        (pdf-scroll-display-image
+         p
+       (pdf-view-create-page p window)
+       window))
     (pdf-view-display-image
      (pdf-view-create-page page window)
      window)))
