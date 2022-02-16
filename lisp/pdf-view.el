@@ -753,17 +753,19 @@ to previous page only on typing DEL (ARG is nil)."
 When `pdf-view-continuous' is non-nil, scrolling a line upward
 at the bottom edge of the page moves to the next page."
   (interactive "p")
-  (if pdf-view-continuous
-      (let ((hscroll (window-hscroll))
-            (cur-page (pdf-view-current-page)))
-        (when (= (window-vscroll nil pdf-view-have-image-mode-pixel-vscroll)
-                 (image-next-line arg))
-          (pdf-view-next-page)
-          (when (/= cur-page (pdf-view-current-page))
-            (image-bob)
-            (image-bol 1))
-          (image-set-window-hscroll hscroll)))
-    (image-next-line 1)))
+  (if pdf-view-display-as-scroll
+      (pdf-scroll-scroll-forward)
+    (if pdf-view-continuous
+        (let ((hscroll (window-hscroll))
+              (cur-page (pdf-view-current-page)))
+          (when (= (window-vscroll nil pdf-view-have-image-mode-pixel-vscroll)
+                   (image-next-line arg))
+            (pdf-view-next-page)
+            (when (/= cur-page (pdf-view-current-page))
+              (image-bob)
+              (image-bol 1))
+            (image-set-window-hscroll hscroll)))
+      (image-next-line 1))))
 
 (defun pdf-view-previous-line-or-previous-page (&optional arg)
   "Scroll downward by ARG lines if possible, else go to the previous page.
@@ -1055,18 +1057,19 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
   "Redisplay page in WINDOW.
 
 If WINDOW is t, redisplay pages in all windows."
-  (let ((winprops (assoc window image-mode-winprops-alist))
-        (pages (pdf-cache-number-of-pages))
-        (inhibit-read-only t))
-    (dolist (ov (overlays-in (point-min) (point-max)))
-      (when (or (eq (overlay-get ov 'face) 'hl-line)
-                 (not (window-live-p (overlay-get ov 'window))))
-        (delete-overlay ov)))
-    (setf (pdf-scroll-image-sizes) (let (s)
-                                     (dotimes (i (pdf-info-number-of-pages) (nreverse s))
-                                       (push (pdf-view-desired-image-size (1+ i)) s))))
-    (setf (pdf-scroll-image-positions) (pdf-scroll-create-image-positions (pdf-scroll-image-sizes)))
-    (pdf-scroll-create-placeholders pages winprops))
+  (when pdf-view-display-as-scroll
+    (let ((winprops (assoc window image-mode-winprops-alist))
+          (pages (pdf-cache-number-of-pages))
+          (inhibit-read-only t))
+      (dolist (ov (overlays-in (point-min) (point-max)))
+        (when (or (eq (overlay-get ov 'face) 'hl-line)
+                  (not (window-live-p (overlay-get ov 'window))))
+          (delete-overlay ov)))
+      (setf (pdf-scroll-image-sizes) (let (s)
+                                       (dotimes (i (pdf-info-number-of-pages) (nreverse s))
+                                         (push (pdf-view-desired-image-size (1+ i)) s))))
+      (setf (pdf-scroll-image-positions) (pdf-scroll-create-image-positions (pdf-scroll-image-sizes)))
+      (pdf-scroll-create-placeholders pages winprops)))
 
   (unless pdf-view-inhibit-redisplay
     (if (not (eq t window))
@@ -1128,8 +1131,8 @@ If WINDOW is t, redisplay pages in all windows."
         (progn
           (setq ol (copy-overlay ol))
           ;; `ol' might actually be dead.
-          (move-overlay ol (point-min) pdf-scroll-contents-end-pos))
-      (setq ol (make-overlay (point-min) pdf-scroll-contents-end-pos nil t))
+          (move-overlay ol (point-min) (point-max)))
+      (setq ol (make-overlay (point-min) (point-max) nil t))
       (overlay-put ol 'pdf-view t))
     (overlay-put ol 'window (car winprops))
     (unless (windowp (car winprops))
