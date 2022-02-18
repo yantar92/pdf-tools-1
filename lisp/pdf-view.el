@@ -244,6 +244,12 @@ regarding display of the region in the later function.")
   (>= emacs-major-version 27)
   "Whether `image-mode' scrolls vertically by pixels.")
 
+;;; Toggle
+(defun pdf-view-toggle-scroll ()
+  (interactive)
+  (let ((new-value (if pdf-view-display-as-scroll nil t)))
+    (setq pdf-view-display-as-scroll new-value)))
+
 
 ;; * ================================================================== *
 ;; * Major Mode
