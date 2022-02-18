@@ -392,6 +392,7 @@ PNG images in Emacs buffers."
   (when pdf-view-display-as-scroll
     (require 'pdf-scroll))
 
+  ;; this hook function is run after image-mode/pdf-scroll-reapply-winprops
   (add-hook 'window-configuration-change-hook
               'pdf-view-redisplay-some-windows nil t)
   ;; (add-hook 'deactivate-mark-hook 'pdf-view-deactivate-region nil t)
@@ -407,8 +408,9 @@ PNG images in Emacs buffers."
                 'pdf-scroll-new-window-function
             'pdf-view-new-window-function)
             nil t)
-  ;; (image-mode-setup-winprops)
-  (pdf-scroll-setup-winprops)
+  (if pdf-view-display-as-scroll
+      (pdf-scroll-setup-winprops)
+    (image-mode-setup-winprops))
 
   ;; Issue a warning in the future about incompatible modes.
   (run-with-timer 1 nil (lambda (buffer)
@@ -773,17 +775,19 @@ at the bottom edge of the page moves to the next page."
 When `pdf-view-continuous' is non-nil, scrolling a line downward
 at the top edge of the page moves to the previous page."
   (interactive "p")
-  (if pdf-view-continuous
-      (let ((hscroll (window-hscroll))
-            (cur-page (pdf-view-current-page)))
-        (when (= (window-vscroll nil pdf-view-have-image-mode-pixel-vscroll)
-                 (image-previous-line arg))
-          (pdf-view-previous-page)
-          (when (/= cur-page (pdf-view-current-page))
-            (image-eob)
-            (image-bol 1))
-          (image-set-window-hscroll hscroll)))
-    (image-previous-line arg)))
+  (if pdf-view-display-as-scroll
+      (pdf-scroll-scroll-backward)
+    (if pdf-view-continuous
+        (let ((hscroll (window-hscroll))
+              (cur-page (pdf-view-current-page)))
+          (when (= (window-vscroll nil pdf-view-have-image-mode-pixel-vscroll)
+                   (image-previous-line arg))
+            (pdf-view-previous-page)
+            (when (/= cur-page (pdf-view-current-page))
+              (image-eob)
+              (image-bol 1))
+            (image-set-window-hscroll hscroll)))
+      (image-previous-line arg))))
 
 (defun pdf-view-goto-label (label)
   "Go to the page corresponding to LABEL.
@@ -1007,11 +1011,29 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
   "Display page PAGE in WINDOW."
   (setf (pdf-view-window-needs-redisplay window) nil)
   (if pdf-view-display-as-scroll
-      (dolist (p (pdf-scroll-page-triplet page))
-        (pdf-scroll-display-image
-         p
-       (pdf-view-create-page p window)
-       window))
+
+      (let ((triplet (pdf-scroll-page-triplet page)))
+        (dolist (p (pdf-scroll-currently-displayed-pages))
+          (unless (memq p triplet)
+            (pdf-scroll-page-placeholder p nil "red")
+            (setf (pdf-scroll-currently-displayed-pages) (delete p (pdf-scroll-currently-displayed-pages)))))
+        (dolist (p triplet)
+          (pdf-scroll-display-image
+           p
+           (pdf-view-create-page p window)
+           window)
+          (push p (pdf-scroll-currently-displayed-pages)))
+        (let* ((hscroll (image-mode-window-get 'hscroll window))
+               (vscroll (nth (1- page) (pdf-scroll-image-positions))))
+          ;; Reset scroll settings, in case they were changed.
+          (if hscroll (set-window-hscroll window hscroll))
+          (if vscroll (pdf-scroll-set-vscroll vscroll )))
+        (pdf-scroll-debug "display" (window-vscroll nil t) window)
+        ;; ;; (pdf-scroll-relative-vscroll) ;; does fix things when run using `M-:'
+        (print "This message is required to fix pdf-tools display issues")
+        (run-with-timer 0.1 nil #'message nil))
+
+
     (pdf-view-display-image
      (pdf-view-create-page page window)
      window)))
@@ -1069,7 +1091,9 @@ If WINDOW is t, redisplay pages in all windows."
                                        (dotimes (i (pdf-info-number-of-pages) (nreverse s))
                                          (push (pdf-view-desired-image-size (1+ i)) s))))
       (setf (pdf-scroll-image-positions) (pdf-scroll-create-image-positions (pdf-scroll-image-sizes)))
-      (pdf-scroll-create-placeholders pages winprops)))
+      (pdf-scroll-create-placeholders pages winprops))
+    ;; (pdf-scroll-warn "new placeholders" window)
+    )
 
   (unless pdf-view-inhibit-redisplay
     (if (not (eq t window))

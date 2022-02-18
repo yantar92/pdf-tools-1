@@ -135,18 +135,18 @@ In order to customize dark and light colors use
 
 (defcustom pdf-tools-enabled-modes
   '(
-    ;; pdf-history-minor-mode
-    ;; pdf-isearch-minor-mode
-    ;; pdf-links-minor-mode
-    ;; pdf-misc-minor-mode
-    ;; pdf-outline-minor-mode
-    ;; pdf-misc-size-indication-minor-mode
-    ;; pdf-misc-menu-bar-minor-mode
-    ;; pdf-annot-minor-mode
-    ;; pdf-sync-minor-mode
-    ;; pdf-misc-context-menu-minor-mode
-    ;; pdf-cache-prefetch-minor-mode
-    ;; pdf-occur-global-minor-mode
+    pdf-history-minor-mode
+    pdf-isearch-minor-mode
+    pdf-links-minor-mode
+    pdf-misc-minor-mode
+    pdf-outline-minor-mode
+    pdf-misc-size-indication-minor-mode
+    pdf-misc-menu-bar-minor-mode
+    pdf-annot-minor-mode
+    pdf-sync-minor-mode
+    pdf-misc-context-menu-minor-mode
+    pdf-cache-prefetch-minor-mode
+    pdf-occur-global-minor-mode
     ;; pdf-virtual-global-minor-mode
     )
   "A list of automatically enabled minor-modes.

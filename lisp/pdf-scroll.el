@@ -20,18 +20,31 @@
 
 ;;; Commentary:
 
+;; TODO fix history mode (push to stack)
+
 ;;  Functions related to displaying PDF documents as a scroll.
 
-;;; Code:
 
+;;;; Code:
 (eval-when-compile
+  (require 'cl-lib)
   (require 'image-mode)
   (require 'pdf-macs))
 
-(defvar-local pdf-scroll-step-size 50)
+(defcustom pdf-scroll-step-size 50
+  "Scroll step size in pixels."
+  :group 'pdf-scroll
+  :type 'integer)
 
-(defvar-local pdf-scroll-page-separation-height 2)
-(defvar-local pdf-scroll-page-separation-color "dim gray")
+(defcustom pdf-scroll-page-separation-height 20
+  "Page separation height."
+  :group 'pdf-scroll
+  :type 'integer)
+
+(defcustom pdf-scroll-page-separation-color "dim gray"
+  "Page color of space between the pages."
+  :group 'pdf-scroll
+  :type 'color)
 
 (defmacro pdf-scroll-page-overlays (&optional window)
   `(image-mode-window-get 'page-overlays ,window))
@@ -41,13 +54,45 @@
   `(image-mode-window-get 'image-sizes ,window))
 (defmacro pdf-scroll-image-positions (&optional window)
   `(image-mode-window-get 'image-positions ,window))
+(defmacro pdf-scroll-relative-vscroll (&optional window)
+  `(image-mode-window-get 'relative-vscroll ,window))
 (defmacro pdf-scroll-currently-displayed-pages (&optional window)
   `(image-mode-window-get 'displayed-pages ,window))
 
+
+;;; Debug
+(setq pdf-scroll-log-counter 0)
+
+(defun pdf-scroll-format-log-message (message &rest objects)
+  (apply #'concat message (mapcar (lambda (o)
+                                    (concat " " (prin1-to-string o)))
+                                  objects)))
+
+(defun pdf-scroll-log (message &optional level &rest objects)
+  (let* ((counter (number-to-string (cl-incf pdf-scroll-log-counter)))
+         (message (apply #'pdf-scroll-format-log-message message objects)))
+    (display-warning '(pdf-scroll) message level "*pdf-scroll-log*")))
+
+(defun pdf-scroll-debug (message &rest objects)
+  (apply #'pdf-scroll-log message :debug objects))
+
+(defun pdf-scroll-warn (message &rest objects)
+  (apply #'pdf-scroll-log message :warning objects))
+
+(defun pdf-scroll-log-buffer ()
+  (interactive)
+  (switch-to-buffer "*pdf-scroll-log*"))
+
+(when (boundp 'spacemacs-version)
+  (spacemacs/set-leader-keys "bl" #'pdf-scroll-log-buffer))
+
+
+;;; Scroll
 (defun pdf-scroll-create-image-positions (image-sizes)
   (let* ((sum 0)
          (positions (list 0)))
     (dolist (s image-sizes)
+      ;; TODO report Emacs bug, height is not 'acknowledged' in split buffer
       (setq sum (+ sum (cdr s) pdf-scroll-page-separation-height))
       ;; remove separation height after last page
       (pop image-sizes)
@@ -113,6 +158,20 @@ overlay-property)."
         (pdf-scroll-page-placeholder (1+ ol) win)
         (setq ol (1+ ol))))))
 
+(defun pdf-scroll-vscroll-to-relative (vscroll)
+  (let* ((page (or (pdf-view-current-page) 1))
+         (page-fraction (/ (float (- vscroll
+                                     (nth (1- page) (pdf-scroll-image-positions))))
+                           (cdr (nth (1- page) (pdf-scroll-image-sizes))))))
+    (cons page page-fraction)))
+
+(defun pdf-scroll-relative-to-vscroll (window)
+  (let* ((rel-pos (pdf-scroll-relative-vscroll window))
+         (page (or (car rel-pos) 1)))
+    (round (+
+            (or (nth (1- page) (pdf-scroll-image-positions)) 0)
+            (* (or (cdr rel-pos) 0) (cdr (nth (1- page) (pdf-scroll-image-sizes))))))))
+
 (defun pdf-scroll-page-triplet (page)
   ;; first handle the cases when the doc has only one or two pages
   (pcase (pdf-cache-number-of-pages)
@@ -123,12 +182,17 @@ overlay-property)."
          ((pred (= (pdf-cache-number-of-pages))) (list page (- page 1)))
          (p (list (- p 1) p (+ p 1)))))))
 
+(defun pdf-scroll-set-vscroll (vscroll)
+  (setf (image-mode-window-get 'relative-vscroll)
+        (pdf-scroll-vscroll-to-relative vscroll))
+  (set-window-vscroll (selected-window) vscroll t))
+
 (defun pdf-scroll-scroll-forward ()
   (interactive)
-  (let* ((page-end (+ (nth (pdf-view-current-page) (pdf-scroll-image-positions))
-                      pdf-scroll-page-separation-height))
+  (let* ((page-end (nth (pdf-view-current-page) (pdf-scroll-image-positions)))
          (vscroll (window-vscroll nil t))
          (new-vscroll (image-set-window-vscroll (+ vscroll pdf-scroll-step-size))))
+    (pdf-scroll-set-vscroll new-vscroll)
     (when (> new-vscroll page-end)
       (let* ((new-page (alist-get 'page (cl-incf (pdf-view-current-page))))
              (next-page (1+ new-page)))
@@ -137,6 +201,21 @@ overlay-property)."
         (pdf-scroll-display-image next-page
                                   (pdf-view-create-page next-page))
         (push next-page (pdf-scroll-currently-displayed-pages))))))
+
+(defun pdf-scroll-scroll-backward ()
+  (interactive)
+  (let* ((page-beg (nth (1- (pdf-view-current-page)) (pdf-scroll-image-positions)))
+         (vscroll (window-vscroll nil t))
+         (new-vscroll (image-set-window-vscroll (- vscroll pdf-scroll-step-size))))
+    (pdf-scroll-set-vscroll new-vscroll)
+    (when (< new-vscroll page-beg)
+      (let* ((new-page (alist-get 'page (cl-decf (pdf-view-current-page))))
+             (previous-page (1- new-page)))
+        ;; (when (> new-page 2)
+        ;;   (book-remove-page-image (- new-page 2))
+        (pdf-scroll-display-image previous-page
+                                  (pdf-view-create-page previous-page))
+        (push previous-page (pdf-scroll-currently-displayed-pages))))))
 
 (defun pdf-scroll-reapply-winprops ()
   ;; When set-window-buffer, set hscroll and vscroll to what they were
@@ -147,11 +226,17 @@ overlay-property)."
     ;; (e.g. it's used by doc-view to display the image in a new window).
     (let* ((winprops (image-mode-winprops nil t))
            (hscroll (image-mode-window-get 'hscroll winprops))
-           (vscroll (nth (1- (pdf-view-current-page)) (pdf-scroll-image-positions))))
+           ;; (vscroll (print (nth (1- (or (pdf-view-current-page) 1)) (pdf-scroll-image-positions)))))
+           (vscroll (pdf-scroll-relative-to-vscroll (car winprops))))
       (when (image-get-display-property) ;Only do it if we display an image!
-        (goto-char (point-min)) ;; required for using vscroll
-	      (if hscroll (set-window-hscroll (selected-window) hscroll))
-	      (if vscroll (set-window-vscroll (selected-window) vscroll t))))))
+	(if hscroll (set-window-hscroll (selected-window) hscroll))
+
+        ;; TODO report Emacs bug, printing the value eliminates the vscroll issues 
+        ;; (if vscroll (print (set-window-vscroll (selected-window) vscroll t)))))))
+
+        (if vscroll (set-window-vscroll (selected-window) vscroll t))
+        (pdf-scroll-debug "reapply" (window-vscroll nil t) (car winprops))
+))))
 
 (defun pdf-scroll-setup-winprops ()
   ;; Record current scroll settings.
@@ -192,39 +277,42 @@ overlay-property)."
 (defun pdf-scroll-new-window-function (winprops)
   ;; check if overlays have already been added
   ;; This works reliably for a maximum of two buffers
-  (if (image-mode-window-get 'page-overlays winprops)
-      (let ((i 1)
-            page-overlays
-            separation-overlays)
-        (dolist (o (overlays-in (point-min) (point-max)))
-          (let ((ol (copy-overlay o)))
-            (overlay-put ol 'window (car winprops))
-            (if (evenp i)
-                (push ol separation-overlays)
-              (push ol page-overlays))
-            (setq i (1+ i))))
-        (image-mode-window-put 'page-overlays (nreverse page-overlays) winprops)
-        (image-mode-window-put 'separation-overlays (nreverse separation-overlays) winprops))
+  (if-let ((page-overlays (image-mode-window-get 'page-overlays))
+           (separation-overlays (image-mode-window-get 'separation-overlays)))
+      (let ((pols (mapcar (lambda (o)
+                                  (let ((ol (copy-overlay o)))
+                                    (overlay-put ol 'window (car winprops))
+                                    ol))
+                                page-overlays))
+            (sols (mapcar (lambda (o)
+                                  (let ((ol (copy-overlay o)))
+                                    (overlay-put ol 'window (car winprops))
+                                    ol))
+                                separation-overlays)))
+            (image-mode-window-put 'page-overlays pols winprops)
+            (image-mode-window-put 'separation-overlays sols winprops))
     ;; (let ((ol (make-overlay (point-min) (point-max))))
     ;;   (overlay-put ol 'invisible t))
     (let ((pages (pdf-cache-number-of-pages))
           (inhibit-read-only t))
-      (unless (= (char-after 1) 32)
+      (unless (= (or (char-after 1) 0) 32)
         (erase-buffer))
       (unless (eq (car winprops) t)
         (pdf-scroll-create-overlays-lists pages winprops)
-        (setf (pdf-scroll-image-sizes) (let (s)
-                                         (dotimes (i (pdf-info-number-of-pages) (nreverse s))
-                                           (push (pdf-view-desired-image-size (1+ i)) s))))
-        (setf (pdf-scroll-image-positions) (pdf-scroll-create-image-positions (pdf-scroll-image-sizes)))
-        (pdf-scroll-create-placeholders pages winprops)
+        ;; (setf (pdf-scroll-image-sizes) (let (s)
+        ;;                                  (dotimes (i (pdf-info-number-of-pages) (nreverse s))
+        ;;                                    (push (pdf-view-desired-image-size (1+ i)) s))))
+        ;; (setf (pdf-scroll-image-positions) (pdf-scroll-create-image-positions (pdf-scroll-image-sizes)))
+        ;; (pdf-scroll-create-placeholders pages winprops)
         (when (and (windowp (car winprops))
                    (null (image-mode-window-get 'image winprops)))
           ;; We're not displaying an image yet, so let's do so.  This
           ;; happens when the buffer is displayed for the first time.
           (with-selected-window (car winprops)
+            ;; (pdf-scroll-set-vscroll 0)
             (pdf-view-goto-page
-             (or (image-mode-window-get 'page t) 1))))))))
+             (or (image-mode-window-get 'page t) 1))
+            (goto-char (point-min))))))))
 
 
 (define-minor-mode pdf-scroll-mode "Read books in Emacs"
