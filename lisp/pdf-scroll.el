@@ -36,7 +36,7 @@
   :group 'pdf-scroll
   :type 'integer)
 
-(defcustom pdf-scroll-page-separation-height 20
+(defcustom pdf-scroll-page-separation-height 5
   "Page separation height."
   :group 'pdf-scroll
   :type 'integer)

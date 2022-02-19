@@ -276,9 +276,10 @@ This is a Isearch interface function."
         (pdf-isearch-hl-matches next-match matches)
         (pdf-isearch-focus-match next-match)
         ;; Don't get off track.
-        (when (or (and (bobp) (not isearch-forward))
-                  (and (eobp) isearch-forward))
-          (goto-char (1+ (/ (buffer-size) 2))))
+        ;; (goto-char (point-min))
+        ;; (when (or (and (bobp) (not isearch-forward))
+        ;;           (and (eobp) isearch-forward))
+        ;;   (goto-char (print (1+ (/ (buffer-size) 2)))))
         ;; Signal success to isearch.
         (if isearch-forward
             (re-search-forward ".")
@@ -347,7 +348,9 @@ This is a Isearch interface function."
         pdf-isearch-current-match nil
         pdf-isearch-current-matches nil
         pdf-isearch-current-parameter nil)
-  (goto-char (1+ (/ (buffer-size) 2))))
+  ;; (goto-char (point-min))
+  )
+  ;; (goto-char (1+ (/ (buffer-size) 2))))
 
 (defun pdf-isearch-same-search-p (&optional ignore-search-string-p)
   "Return non-nil, if search parameter have not changed.
@@ -742,8 +745,20 @@ MATCH-BG LAZY-FG LAZY-BG\)."
                              (or isearch-mode
                                  occur-hack-p)
                              (eq page (pdf-view-current-page)))
-                    (pdf-view-display-image
-                     (pdf-view-create-image data :width width))))))))
+                    (let ((args (if pdf-view-display-as-scroll
+                                    (list page (pdf-view-create-image data :width width))
+                                  (list (pdf-view-create-image data :width width)))))
+                      (apply (if pdf-view-display-as-scroll
+                                 #'pdf-scroll-display-image
+                               #'pdf-view-display-image)
+                             args)
+                      (when pdf-view-display-as-scroll
+                        (let* ((hscroll (image-mode-window-get 'hscroll window))
+                               (vscroll (+ (nth (1- page) (pdf-scroll-image-positions))
+                                           (image-mode-window-get 'vscroll window))))
+                          ;; Reset scroll settings, in case they were changed.
+                          (if hscroll (set-window-hscroll window hscroll))
+                          (if vscroll (pdf-scroll-set-vscroll vscroll)))))))))))
       (pdf-info-renderpage-text-regions
        page width t nil
        `(,fg1 ,bg1 ,@(pdf-util-scale-pixel-to-relative
