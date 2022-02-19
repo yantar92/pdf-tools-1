@@ -63,14 +63,14 @@
 ;;; Debug
 (setq pdf-scroll-log-counter 0)
 
-(defun pdf-scroll-format-log-message (message &rest objects)
-  (apply #'concat message (mapcar (lambda (o)
+(defun pdf-scroll-format-log-message (counter message &rest objects)
+  (apply #'concat counter " " message (mapcar (lambda (o)
                                     (concat " " (prin1-to-string o)))
                                   objects)))
 
 (defun pdf-scroll-log (message &optional level &rest objects)
   (let* ((counter (number-to-string (cl-incf pdf-scroll-log-counter)))
-         (message (apply #'pdf-scroll-format-log-message message objects)))
+         (message (apply #'pdf-scroll-format-log-message counter message objects)))
     (display-warning '(pdf-scroll) message level "*pdf-scroll-log*")))
 
 (defun pdf-scroll-debug (message &rest objects)
