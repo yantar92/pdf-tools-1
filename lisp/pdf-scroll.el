@@ -92,7 +92,8 @@
   (let* ((sum 0)
          (positions (list 0)))
     (dolist (s image-sizes)
-      ;; TODO report Emacs bug, height is not 'acknowledged' in split buffer
+      ;; TODO report Spacemacs/Doom bug, height is not 'acknowledged' in split
+      ;; buffer
       (setq sum (+ sum (cdr s) pdf-scroll-page-separation-height))
       ;; remove separation height after last page
       (pop image-sizes)
@@ -160,8 +161,9 @@ overlay-property)."
 
 (defun pdf-scroll-vscroll-to-relative (vscroll)
   (let* ((page (or (pdf-view-current-page) 1))
-         (page-fraction (/ (float (- vscroll
-                                     (nth (1- page) (pdf-scroll-image-positions))))
+         (page-fraction (/ (float (max 0
+                                       (- vscroll
+                                          (nth (1- page) (pdf-scroll-image-positions)))))
                            (cdr (nth (1- page) (pdf-scroll-image-sizes))))))
     (cons page page-fraction)))
 
@@ -170,7 +172,8 @@ overlay-property)."
          (page (or (car rel-pos) 1)))
     (round (+
             (or (nth (1- page) (pdf-scroll-image-positions)) 0)
-            (* (or (cdr rel-pos) 0) (cdr (nth (1- page) (pdf-scroll-image-sizes))))))))
+            (* (or (cdr rel-pos) 0)
+               (cdr (nth (1- page) (pdf-scroll-image-sizes))))))))
 
 (defun pdf-scroll-page-triplet (page)
   ;; first handle the cases when the doc has only one or two pages

@@ -25,9 +25,8 @@
 ;;; Code:
 
 (require 'image-mode)
-(eval-when-compile
-  (require 'pdf-macs)
-  (require 'pdf-scroll))
+(require 'pdf-macs)
+(require 'pdf-scroll)
 (require 'pdf-util)
 (require 'pdf-info)
 (require 'pdf-cache)
@@ -401,7 +400,7 @@ PNG images in Emacs buffers."
   ;; this hook function is run after image-mode/pdf-scroll-reapply-winprops
   (add-hook 'window-configuration-change-hook
               'pdf-view-redisplay-some-windows nil t)
-  ;; (add-hook 'deactivate-mark-hook 'pdf-view-deactivate-region nil t)
+  (add-hook 'deactivate-mark-hook 'pdf-view-deactivate-region nil t)
   (add-hook 'write-contents-functions
             'pdf-view--write-contents-function nil t)
   (add-hook 'kill-buffer-hook 'pdf-view-close-document nil t)
@@ -638,7 +637,7 @@ windows."
         (pdf-view-redisplay window))
       (when changing-p
         (pdf-view-deactivate-region)
-        ;; (force-mode-line-update)
+        (force-mode-line-update)
         (run-hooks 'pdf-view-after-change-page-hook))))
   nil)
 
@@ -996,8 +995,8 @@ image.  These values may be different, if slicing is used."
   (if displayed-p
       (with-selected-window (or window (selected-window))
         (image-display-size
-         (image-get-display-property) t))
-    (image-size (pdf-view-current-image window) t)))
+         (pdf-view-current-image) t) t))
+    (image-size (pdf-view-current-image window) t))
 
 (defun pdf-view-image-offset (&optional window)
   ;; TODO: add WINDOW to docstring.
@@ -1030,7 +1029,8 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
            window)
           (push p (pdf-scroll-currently-displayed-pages)))
         (let* ((hscroll (image-mode-window-get 'hscroll window))
-               (vscroll (nth (1- page) (pdf-scroll-image-positions))))
+               (vscroll (pdf-scroll-relative-to-vscroll window)))
+               ;; (vscroll (nth (1- page) (pdf-scroll-image-positions))))
           ;; Reset scroll settings, in case they were changed.
           (if hscroll (set-window-hscroll window hscroll))
           (if vscroll (pdf-scroll-set-vscroll vscroll )))
@@ -1046,7 +1046,7 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
 
 (defun pdf-view-display-image (image &optional window inhibit-slice-p)
   ;; TODO: write documentation!
-  (let ((ol (pdf-view-current-overlay window)))
+  (let ((ol (nth (1- (pdf-view-current-page)) (pdf-scroll-page-overlays window))))
     (when (window-live-p (overlay-get ol 'window))
       (let* ((size (image-size image t))
              (slice (if (not inhibit-slice-p)
@@ -1057,7 +1057,7 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
                                       (car (image-size image)))
                                  (car (image-size image))))))
         (setf (pdf-view-current-image window) image)
-        (move-overlay ol (point-min) (point-max))
+        ;; (move-overlay ol (point-min) (point-max))
         ;; In case the window is wider than the image, center the image
         ;; horizontally.
         (overlay-put ol 'before-string
@@ -1116,8 +1116,7 @@ If WINDOW is t, redisplay pages in all windows."
                       (eq (current-buffer)
                           (window-buffer window)))
             (setf (pdf-view-window-needs-redisplay window) t)))))
-    ;; (force-mode-line-update)
-    ))
+    (force-mode-line-update)))
 
 (defun pdf-view-redisplay-pages (&rest pages)
   "Redisplay PAGES in all windows."
@@ -1482,7 +1481,8 @@ Stores the region in `pdf-view-active-region'."
                   (pdf-view-display-region
                    (cons region pdf-view-active-region)
                    rectangle-p)
-                  (pdf-util-scroll-to-edges iregion)))))
+                  ;; (pdf-util-scroll-to-edges iregion)
+                  ))))
       (setq pdf-view-active-region
             (append pdf-view-active-region
                     (list region)))
@@ -1514,7 +1514,8 @@ This is more useful for commands like
                  (bound-and-true-p pdf-view-dark-minor-mode)))
         (page (pdf-view-current-page))
         (width (car (pdf-view-image-size))))
-    (pdf-view-display-image
+    (pdf-scroll-display-image
+     (pdf-view-current-page)
      (pdf-view-create-image
          (if rectangle-p
              (pdf-info-renderpage-highlight
