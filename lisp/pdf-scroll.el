@@ -232,14 +232,14 @@ overlay-property)."
            ;; (vscroll (print (nth (1- (or (pdf-view-current-page) 1)) (pdf-scroll-image-positions)))))
            (vscroll (pdf-scroll-relative-to-vscroll (car winprops))))
       (when (image-get-display-property) ;Only do it if we display an image!
-	(if hscroll (set-window-hscroll (selected-window) hscroll))
+        (goto-char (point-min))
+	      (if hscroll (set-window-hscroll (selected-window) hscroll))
 
-        ;; TODO report Emacs bug, printing the value eliminates the vscroll issues 
+        ;; TODO report Emacs bug, printing the value eliminates the vscroll issues
         ;; (if vscroll (print (set-window-vscroll (selected-window) vscroll t)))))))
 
         (if vscroll (set-window-vscroll (selected-window) vscroll t))
-        (pdf-scroll-debug "reapply" (window-vscroll nil t) (car winprops))
-))))
+        (pdf-scroll-debug "reapply scroll" (window-vscroll nil t) (car winprops) (backtrace-frame 5))))))
 
 (defun pdf-scroll-setup-winprops ()
   ;; Record current scroll settings.
