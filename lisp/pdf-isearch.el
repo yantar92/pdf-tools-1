@@ -246,6 +246,7 @@ Edge coordinates are in image-space.")
   "Search for STRING in the current PDF buffer.
 
 This is a Isearch interface function."
+  (pdf-debug-debug '("hier" "green"))
   (when (> (length string) 0)
     (let ((same-search-p (pdf-isearch-same-search-p))
           (oldpage pdf-isearch-current-page)

@@ -59,34 +59,6 @@
 (defmacro pdf-scroll-currently-displayed-pages (&optional window)
   `(image-mode-window-get 'displayed-pages ,window))
 
-
-;;; Debug
-(setq pdf-scroll-log-counter 0)
-
-(defun pdf-scroll-format-log-message (counter message &rest objects)
-  (apply #'concat counter " " message (mapcar (lambda (o)
-                                    (concat " " (prin1-to-string o)))
-                                  objects)))
-
-(defun pdf-scroll-log (message &optional level &rest objects)
-  (let* ((counter (number-to-string (cl-incf pdf-scroll-log-counter)))
-         (message (apply #'pdf-scroll-format-log-message counter message objects)))
-    (display-warning '(pdf-scroll) message level "*pdf-scroll-log*")))
-
-(defun pdf-scroll-debug (message &rest objects)
-  (apply #'pdf-scroll-log message :debug objects))
-
-(defun pdf-scroll-warn (message &rest objects)
-  (apply #'pdf-scroll-log message :warning objects))
-
-(defun pdf-scroll-log-buffer ()
-  (interactive)
-  (switch-to-buffer "*pdf-scroll-log*"))
-
-(when (boundp 'spacemacs-version)
-  (spacemacs/set-leader-keys "bl" #'pdf-scroll-log-buffer))
-
-
 ;;; Scroll
 (defun pdf-scroll-create-image-positions (image-sizes)
   (let* ((sum 0)
@@ -223,6 +195,7 @@ overlay-property)."
 (defun pdf-scroll-reapply-winprops ()
   ;; When set-window-buffer, set hscroll and vscroll to what they were
   ;; last time the image was displayed in this window.
+  (pdf-debug-debug "reapply winprops")
   (when (listp image-mode-winprops-alist)
     ;; Beware: this call to image-mode-winprops can't be optimized away,
     ;; because it not only gets the winprops data but sets it up if needed
@@ -239,7 +212,7 @@ overlay-property)."
         ;; (if vscroll (print (set-window-vscroll (selected-window) vscroll t)))))))
 
         (if vscroll (set-window-vscroll (selected-window) vscroll t))
-        (pdf-scroll-debug "reapply scroll" (window-vscroll nil t) (car winprops) (backtrace-frame 5))))))
+        (pdf-debug-debug "reapply scroll" (window-vscroll nil t) (car winprops) (backtrace-frame 5))))))
 
 (defun pdf-scroll-setup-winprops ()
   ;; Record current scroll settings.

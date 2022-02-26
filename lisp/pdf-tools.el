@@ -134,8 +134,7 @@ In order to customize dark and light colors use
     pdf-virtual-global-minor-mode))
 
 (defcustom pdf-tools-enabled-modes
-  '(
-    pdf-history-minor-mode
+  '(pdf-history-minor-mode
     pdf-isearch-minor-mode
     pdf-links-minor-mode
     pdf-misc-minor-mode

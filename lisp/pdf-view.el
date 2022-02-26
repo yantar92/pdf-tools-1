@@ -27,6 +27,7 @@
 (require 'image-mode)
 (require 'pdf-macs)
 (require 'pdf-scroll)
+(require 'pdf-debug)
 (require 'pdf-util)
 (require 'pdf-info)
 (require 'pdf-cache)
@@ -1034,7 +1035,7 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
           ;; Reset scroll settings, in case they were changed.
           (if hscroll (set-window-hscroll window hscroll))
           (if vscroll (pdf-scroll-set-vscroll vscroll )))
-        (pdf-scroll-debug "display" (window-vscroll nil t) window)
+        (pdf-debug-debug "display" (window-vscroll nil t) window)
         ;; ;; (pdf-scroll-relative-vscroll) ;; does fix things when run using `M-:'
         (print "This message is required to fix pdf-tools display issues")
         (run-with-timer 0.1 nil #'message nil))
@@ -1085,6 +1086,7 @@ It is equal to \(LEFT . TOP\) of the current slice in pixel."
   "Redisplay page in WINDOW.
 
 If WINDOW is t, redisplay pages in all windows."
+  (pdf-debug-debug "REDISP")
   (when pdf-view-display-as-scroll
     (let ((winprops (assoc window image-mode-winprops-alist))
           (pages (pdf-cache-number-of-pages))
@@ -1142,6 +1144,7 @@ If WINDOW is t, redisplay pages in all windows."
                            (eq (car size) (car stored)))
                       (and (eq pdf-view-display-size 'fit-height)
                            (eq (cdr size) (cdr stored))))
+            (pdf-debug-debug (propertize "end of some" 'face 'warning))
             (pdf-view-redisplay window)))))))
 
 (defun pdf-view-redisplay-some-windows ()
@@ -1397,6 +1400,7 @@ Deactivate the region if DEACTIVATE-P is non-nil."
   (when pdf-view-active-region
     (setq pdf-view-active-region nil)
     (deactivate-mark)
+    (pdf-debug-debug "PDF-VIEW-DEACTIVATE-REGION")
     (pdf-view-redisplay t)))
 
 (defun pdf-view-mouse-set-region (event &optional allow-extend-p
