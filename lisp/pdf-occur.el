@@ -266,6 +266,7 @@ PDF's window, unless NO-SELECT-WINDOW-P is non-nil.
 
 FIXME: EVENT not used at the moment."
   (interactive)
+  (print "HOI")
   (let ((item (tabulated-list-get-id)))
     (when item
       (let* ((doc (plist-get item :document))
@@ -281,15 +282,22 @@ FIXME: EVENT not used at the moment."
           (pop-to-buffer buffer)
           (setq window (selected-window)))
         (with-selected-window window
+          (goto-char (point-min))
           (when page
             (pdf-view-goto-page page))
           ;; Abuse isearch.
           (when match
             (let ((pixel-match
-                   (pdf-util-scale-relative-to-pixel match))
+                   (print
+                    (pdf-util-scale-relative-to-pixel match)))
                   (pdf-isearch-batch-mode t))
               (pdf-isearch-hl-matches pixel-match nil t)
-              (pdf-isearch-focus-match-batch pixel-match))))))))
+              (pdf-isearch-focus-match-batch pixel-match)))))
+      (pdf-debug-debug "display" (window-vscroll nil t))
+      ;; ;; (pdf-scroll-relative-vscroll) ;; does fix things when run using `M-:'
+      (print "This message is required to fix pdf-tools display issues")
+      (run-with-timer 0.1 nil #'message nil))
+))
 
 (defun pdf-occur-view-occurrence (&optional _event)
   "View the occurrence at EVENT.
