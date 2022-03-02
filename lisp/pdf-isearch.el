@@ -618,7 +618,22 @@ match."
 
 (defun pdf-isearch-focus-match-isearch (match)
   "Make the image area in MATCH visible in the selected window."
-  (pdf-util-scroll-to-edges (apply 'pdf-util-edges-union match)))
+  (when pdf-view-display-as-scroll
+    (goto-char (point-min))
+    (let* ((hscroll (image-mode-window-get 'hscroll))
+           (vscroll (+ (nth (print (1- (pdf-view-current-page))) (pdf-scroll-image-positions))
+                       (cadar match))))
+      ;; (image-mode-window-get 'vscroll window))))
+      ;; Reset scroll settings, in case they were changed.
+      (if hscroll (set-window-hscroll window hscroll))
+      (if vscroll (+ (pdf-scroll-set-vscroll vscroll)))))
+  (print match)
+  ;; TODO report below 'bug'
+  (pdf-debug-debug "display" (window-vscroll nil t))
+  ;; ;; (pdf-scroll-relative-vscroll) ;; does fix things when run using `M-:'
+  (print "This message is required to fix pdf-tools display issues")
+  (run-with-timer 0.1 nil #'message nil))
+;; (pdf-util-scroll-to-edges (apply 'pdf-util-edges-union match)))
 
 (defun pdf-isearch-next-match-batch (last-page this-page last-match
                                                matches same-search-p
@@ -644,7 +659,21 @@ match."
 
 (defun pdf-isearch-focus-match-batch (match)
   "Make the image area in MATCH eagerly visible in the selected window."
-  (pdf-util-scroll-to-edges (apply 'pdf-util-edges-union match) t))
+  (when pdf-view-display-as-scroll
+    (goto-char (point-min))
+    (let* ((hscroll (image-mode-window-get 'hscroll))
+           (vscroll (+ (nth (print (1- (pdf-view-current-page))) (pdf-scroll-image-positions)))))
+      ;; (image-mode-window-get 'vscroll window))))
+      ;; Reset scroll settings, in case they were changed.
+      (if hscroll (set-window-hscroll window hscroll))
+      (if vscroll (+ (pdf-scroll-set-vscroll vscroll)))))
+  (print match)
+  ;; TODO report below 'bug'
+  (pdf-debug-debug "display" (window-vscroll nil t))
+  ;; ;; (pdf-scroll-relative-vscroll) ;; does fix things when run using `M-:'
+  (print "This message is required to fix pdf-tools display issues")
+  (run-with-timer 0.1 nil #'message nil))
+  ;; (pdf-util-scroll-to-edges (apply 'pdf-util-edges-union match) t))
 
 (cl-deftype pdf-isearch-match ()
   `(satisfies
@@ -752,14 +781,7 @@ MATCH-BG LAZY-FG LAZY-BG\)."
                       (apply (if pdf-view-display-as-scroll
                                  #'pdf-scroll-display-image
                                #'pdf-view-display-image)
-                             args)
-                      (when pdf-view-display-as-scroll
-                        (let* ((hscroll (image-mode-window-get 'hscroll window))
-                               (vscroll (+ (nth (1- page) (pdf-scroll-image-positions))
-                                           (image-mode-window-get 'vscroll window))))
-                          ;; Reset scroll settings, in case they were changed.
-                          (if hscroll (set-window-hscroll window hscroll))
-                          (if vscroll (pdf-scroll-set-vscroll vscroll)))))))))))
+                             args))))))))
       (pdf-info-renderpage-text-regions
        page width t nil
        `(,fg1 ,bg1 ,@(pdf-util-scale-pixel-to-relative
