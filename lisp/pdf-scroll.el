@@ -26,10 +26,9 @@
 
 
 ;;;; Code:
-(eval-when-compile
-  (require 'cl-lib)
-  (require 'image-mode)
-  (require 'pdf-macs))
+(require 'cl-lib)
+(require 'image-mode)
+(require 'pdf-macs)
 
 (defcustom pdf-scroll-step-size 50
   "Scroll step size in pixels."

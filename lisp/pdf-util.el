@@ -409,10 +409,10 @@ Returns a list of pixel edges."
                      (frame-char-width (window-frame window))))
          (vscroll (window-vscroll window t))
          (x0 (+ hscroll (car offset)))
-         (y0 (+ (print (- vscroll (if pdf-view-display-as-scroll
-                                       (nth (1- (pdf-view-current-page))
-                                            (pdf-scroll-image-positions))
-                                    0)))
+         (y0 (+ (- vscroll (if pdf-view-display-as-scroll
+                                     (nth (1- (pdf-view-current-page))
+                                          (pdf-scroll-image-positions))
+                                   0))
                 (cdr offset)))
          (x1 (min (car isize)
                   (+ x0 (- (nth 2 edges) (nth 0 edges)))))

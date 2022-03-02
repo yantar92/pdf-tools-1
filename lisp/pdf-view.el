@@ -27,7 +27,7 @@
 (require 'image-mode)
 (require 'pdf-macs)
 (require 'pdf-scroll)
-(require 'pdf-debug)
+(require 'pdf-debug nil t)
 (require 'pdf-util)
 (require 'pdf-info)
 (require 'pdf-cache)
@@ -414,6 +414,9 @@ PNG images in Emacs buffers."
                 'pdf-scroll-new-window-function
             'pdf-view-new-window-function)
             nil t)
+  ;; Winprops setup additionally adds the 'image-mode-reapply-winprops'
+  ;; window-configuration-change-hook function. As it is added with depth is
+  ;; nil, it is put before 'pdf-view-redisplay-some-windows'.
   (if pdf-view-display-as-scroll
       (pdf-scroll-setup-winprops)
     (image-mode-setup-winprops))
