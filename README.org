@@ -1,26 +1,27 @@
 * PLEASE DONATE
-Developing and, more importantly, documenting the continuous scroll
-functionality (and additionally discovering and reporting Emacs bugs) costs a
-lot of time. Learning, and finding out how things work in Emacs and thinking
-about how things should get implemented, with lots of trial and error, costs a
-lot of time (although much of Emacs is well documented, the more exotic
-functionalities and pdf-tools itself lack good documentation, slowing down
-development by a factor of about 100. More specifically, simply implementing
-continuous scroll was not that hard, but fixing features like displaying in
-multiple buffers, isearch, pdf-occur, annotations etc., while all of those are
-more or less undocumented, is a lot of work). I am investing all those, probably
-hundreds of, hours to improve Emacs for everyone, hoping it will help to
-increase Emacs its popularity, so that more users/students can enjoy its
-elegance.
+Developing features like continuous scroll, i.e. investigating how Emacs works
+(and finding out ways to investigate it; also the more exotic parts usually are
+not, at all, perfectly documented), investigating how pdf-tools (and all
+=pdf-tools-modes=) work, thinking out how to design, and fit in, the feature,
+writing the code, encounter, 'overcome' and reporting bugs, writing
+documentation, and multiple iterations of this process, costs a lot of time.
+Unfortunately I am not in any paid position anywhere so that I will simply be
+unable to continue my work (e.g. fixing the [[Incomplete features][incomplete features]], and make this
+branch ready for merging into pdf-tools master) without the help of donations.
 
-Although, if I could, I would be happy to do the work without asking for
-donations, unfortunately my financial situation makes that impossible and
-currently prevents me from further working on, and finishing, this feature.
-Therefore, if you like this feature (if not for yourself, then maybe for others,
-like e.g. students) then please consider to make a donation, so that I will be
-able to continue my work on this package (probably by explaining its workings
-first, see [[../../wiki][the wiki section]], so that more people can help fixing the bugs), or,
-contribute by helping to fix remaining bugs/[[Incomplete features][incomplete features]].
+Additionally, I think writing a developers guide would be a very valuable
+resource for (future) hackers (and users, because they can also learn a ton of
+useful tricks from it). I am planning to expand the guide in [[../../wiki][the wiki section]].
+Of course, writing such a guide takes even more time. Therefore, also to make
+this possible, I would be very happy with your support, either by contributing
+to the work, or otherwise by making a donation if your financial situation
+allows for that (it is a donation also to Emacs, and to the future
+users/students who might like to enjoy this package).
+
+** Thanks for current donations
+I have already received some (anonymous) donations. Although I am thankful for
+any donation, I would like to use this space to thank the anonymous donor(s)
+(that I otherwise don't know how to reach).
 
 * Incomplete features
 - although /isearch/ seemed fully functional in commit [[https://github.com/dalanicolai/pdf-tools/commit/1fd1f98ac2a8ff2be8dc160f8a1056910b8ecac5][1fd1f98]], it got broken
@@ -29,3 +30,51 @@ contribute by helping to fix remaining bugs/[[Incomplete features][incomplete fe
 - goto page usually works initially, but gets broken after some usage
 
 * Installation
+I wish that I could simply tell you how to use this branch. However, I am a
+*Spacemacs* user, where I can simply make the pdf layer use this branch by
+adding the following code to my list of =dotspacemacs-additional-packages= (the
+commented out code can be used if you'd prefer to clone the repo first and then
+install =pdf-tools= from the local directory, e.g. when you'd like to work on
+the code yourself, in that case comment out the (other) =:fetcher=, =:repo= and
+=:branch= lines)
+#+begin_src emacs-lisp :tangle yes
+     (pdf-tools :location (recipe
+                           :fetcher github
+                           :repo "dalanicolai/pdf-tools"
+                           :branch "continuous-scroll-version-3"
+                           ;; :fetcher file
+                           ;; :path "~/git/pdf-tools"
+                           :files ("lisp/*.el"
+                                   "README"
+                                   "vimura-server/*.py"
+                                   ("build" "Makefile")
+                                   ("build" "server")
+				   (:exclude "lisp/tablist.el" "lisp/tablist-filter.el"))))
+#+end_src
+
+For *vanilla Emacs* and *other distributions* I had hoped to recommend using
+Quelpa, but as far as I have found, Quelpa does not support the =:files= keyword
+for building the package, and also it seems not to add installed packages to the
+load path (please, let me know if I am wrong).
+
+Therefore, I think it is probably best to either just clone the code and load
+the required files using the following function (replace the =dir= path with the
+correct one):
+#+begin_src emacs-lisp :tangle yes
+  (defun pdf-load ()
+    (interactive)
+    (let ((dir "~/git/pdf-tools/lisp/"))
+      (load (concat dir "pdf-scroll.el"))
+      (load (concat dir "pdf-view.el"))
+      (load (concat dir "pdf-isearch.el"))
+      (load (concat dir "pdf-util.el"))
+      (load (concat dir "pdf-annot.el"))
+      (load (concat dir "pdf-debug.el"))
+      (load-library "pdf-tools")))
+#+end_src
+or use some alternative package manager (users of those probably know how to use
+it, see the Spacemacs instructions above for hints for the recipe). Otherwise,
+you could follow the [[https://github.com/vedang/pdf-tools#installing-pdf-tools][pdf-tools installation instructions]] (clone the package, be
+sure that you 'meet' all requirements, e.g. having =cask= available on your
+path. Then build the tar file by running =make= in the pdf-tools directory and
+install the tar file using =package-install-file=).
