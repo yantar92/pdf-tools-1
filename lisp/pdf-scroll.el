@@ -1,24 +1,7 @@
 ;; -*- lexical-binding: t; -*-
-;; (require 'papyrus)
+;; (require 'image-roll)
 (require 'pdf-tools)
 (load "~/git/papyrus.el/papyrus.el")
-
-(setq pdf-tools-enabled-modes
-  '(
-    pdf-history-minor-mode
-    pdf-isearch-minor-mode
-    pdf-links-minor-mode
-    pdf-misc-minor-mode
-    pdf-outline-minor-mode
-    pdf-misc-size-indication-minor-mode
-    pdf-misc-menu-bar-minor-mode
-    pdf-annot-minor-mode
-    pdf-sync-minor-mode
-    pdf-misc-context-menu-minor-mode
-    pdf-cache-prefetch-minor-mode
-    pdf-occur-global-minor-mode
-    pdf-virtual-global-minor-mode
-    ))
 
 (defun pdf-scroll-page-sizes ()
   (let (s)
@@ -29,22 +12,22 @@
   (setf (pdf-view-window-needs-redisplay) t))
 
 (defun pdf-scroll-set-functions ()
-(setq papyrus-display-page 'pdf-view-display-page
-      papyrus-number-of-pages-function 'pdf-cache-number-of-pages
-      papyrus-page-sizes-function 'pdf-scroll-page-sizes
-      papyrus-set-redisplay-flag-function 'pdf-set-redisplay-flag-function)
+(setq image-roll-display-page 'pdf-view-display-page
+      image-roll-number-of-pages-function 'pdf-cache-number-of-pages
+      image-roll-page-sizes-function 'pdf-scroll-page-sizes
+      image-roll-set-redisplay-flag-function 'pdf-set-redisplay-flag-function)
 )
 
 (add-hook 'pdf-view-mode-hook 'pdf-scroll-set-functions)
 
-(defalias 'pdf-view-new-window-function 'papyrus--new-window-function)
-(defalias 'pdf-view-redisplay #'papyrus--redisplay)
+(defalias 'pdf-view-new-window-function 'image-roll--new-window-function)
+(defalias 'pdf-view-redisplay #'image-roll--redisplay)
 
-(defalias 'pdf-view-next-line-or-next-page #'papyrus-scroll-forward)
-(defalias 'pdf-view-previous-line-or-previous-page #'papyrus-scroll-backward)
+(defalias 'pdf-view-next-line-or-next-page #'image-roll-scroll-forward)
+(defalias 'pdf-view-previous-line-or-previous-page #'image-roll-scroll-backward)
 
-(defalias 'pdf-view-next-page #'papyrus-next-page)
-(defalias 'pdf-view-previous-page #'papyrus-previous-page)
+(defalias 'pdf-view-next-page #'image-roll-next-page)
+(defalias 'pdf-view-previous-page #'image-roll-previous-page)
 
 (defun pdf-view-display-page (page &optional window)
   "Display page PAGE in WINDOW."
@@ -56,8 +39,8 @@
 
 (defun pdf-view-display-image (page image &optional window inhibit-slice-p)
   ;; TODO: write documentation!
-  (let ((ol (papyrus-page-overlay page))
-        (gol (papyrus-gap-overlay page)))
+  (let ((ol (image-roll-page-overlay page))
+        (gol (image-roll-gap-overlay page)))
     (when (window-live-p (overlay-get ol 'window))
       (let* ((size (image-size image t))
              (slice (if (not inhibit-slice-p)
@@ -209,7 +192,7 @@ which case scroll as much as possible."
   (let ((vscroll (pdf-util-required-vscroll edges eager-p)))
     ;; (hscroll (pdf-util-required-hscroll edges eager-p)))
     (when vscroll
-      (image-set-window-vscroll (+ (car (papyrus-page-overlay-get (papyrus-current-page) 'vpos)) vscroll)))))
+      (image-set-window-vscroll (+ (car (image-roll-page-overlay-get (image-roll-current-page) 'vpos)) vscroll)))))
 
 
 ;;; Fix `pdf-links-minor-mode'
@@ -315,7 +298,7 @@ scroll the current page."
                (when (> .page 0)
                  (pdf-view-goto-page .page))
 
-               ;; TODO fix pdf-util-tooltip-arrow function for papyrus
+               ;; TODO fix pdf-util-tooltip-arrow function for image-roll
                ;; compatibility
 
                ;; (when .top
