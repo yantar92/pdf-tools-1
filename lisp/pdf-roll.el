@@ -49,7 +49,10 @@ continuous scrolling."
                      image-roll-page-sizes-function 'pdf-roll-page-sizes
                      image-roll-set-redisplay-flag-function 'pdf-roll-set-redisplay-flag-function
 
-                     image-roll-center t)
+                     image-roll-center t
+                     image-roll-change-page-hook pdf-view-change-page-hook
+                     image-roll-before-change-page-hook pdf-view-before-change-page-hook
+                     image-roll-after-change-page-hook pdf-view-after-change-page-hook)
 
          (add-hook 'window-configuration-change-hook 'image-roll-redisplay nil t)
 
